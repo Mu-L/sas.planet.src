@@ -295,6 +295,7 @@ uses
   u_GeoCoderByCoord in 'Src\GeoCoder\u_GeoCoderByCoord.pas',
   u_GeoCoderByGPSies in 'Src\GeoCoder\u_GeoCoderByGPSies.pas',
   u_GeoCoderByGoogle in 'Src\GeoCoder\u_GeoCoderByGoogle.pas',
+  u_GeoCoderByGoogleEarth in 'Src\GeoCoder\u_GeoCoderByGoogleEarth.pas',
   u_GeoCoderByGpx in 'Src\GeoCoder\u_GeoCoderByGpx.pas',
   u_GeoCoderByIp2geolocation in 'Src\GeoCoder\u_GeoCoderByIp2geolocation.pas',
   u_GeoCoderByMarks in 'Src\GeoCoder\u_GeoCoderByMarks.pas',

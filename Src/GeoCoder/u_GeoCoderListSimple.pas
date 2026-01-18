@@ -69,6 +69,7 @@ uses
   u_InterfaceListSimple,
   u_GeoCoderListEntity,
   u_GeoCoderByGoogle,
+  u_GeoCoderByGoogleEarth,
   u_GeoCoderByYandex,
   u_GeoCoderBy2GIS,
   u_GeoCoderByOSM,
@@ -127,6 +128,20 @@ begin
       );
     VList.Add(VItem);
   end;
+
+  VItem :=
+    TGeoCoderListEntity.Create(
+      CGeoCoderGoogleEarthGUID,
+      'Google Earth',
+      TGeoCoderByGoogleEarth.Create(
+        AInetConfig,
+        AGCNotifier,
+        AVectorItemSubsetBuilderFactory,
+        APlacemarkFactory,
+        ADownloaderFactory
+      )
+    );
+  VList.Add(VItem);
 
   VApiKey := AGeoCoderConfig.YandexApiKey;
   if VApiKey <> '' then begin
