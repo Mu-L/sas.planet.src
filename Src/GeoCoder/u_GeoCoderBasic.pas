@@ -41,12 +41,13 @@ uses
   u_BaseInterfacedObject;
 
 type
-  TGeoCoderBasic = class(TBaseInterfacedObject, IGeoCoder)
+  TGeoCoderBasic = class abstract(TBaseInterfacedObject, IGeoCoder)
   private
     FDownloader: IDownloader;
     FInetSettings: IInetConfig;
     FVectorItemSubsetBuilderFactory: IVectorItemSubsetBuilderFactory;
     FPlacemarkFactory: IGeoCodePlacemarkFactory;
+
     function BuildSortedSubset(
       const AList: IInterfaceListSimple;
       const ALocalConverter: ILocalCoordConverter
@@ -54,13 +55,20 @@ type
   protected
     FApiKey: string;
 
-    function PrepareRequestByURL(const AUrl: AnsiString): IDownloadRequest;
-    function URLEncode(const S: AnsiString): AnsiString;
+    function PrepareRequestByUrl(const AUrl: AnsiString): IDownloadRequest;
+    function UrlEncode(const S: AnsiString): AnsiString;
 
     function PrepareRequest(
       const ASearch: string;
       const ALocalConverter: ILocalCoordConverter
-    ): IDownloadRequest; virtual; abstract;
+    ): IDownloadRequest; overload; virtual;
+
+    function PrepareRequest(
+      const ACancelNotifier: INotifierOperation;
+      AOperationID: Integer;
+      const ASearch: string;
+      const ALocalConverter: ILocalCoordConverter
+    ): IDownloadRequest; overload; virtual;
 
     function ParseResultToPlacemarksList(
       const ACancelNotifier: INotifierOperation;
@@ -88,7 +96,8 @@ type
       const AVectorItemSubsetBuilderFactory: IVectorItemSubsetBuilderFactory;
       const APlacemarkFactory: IGeoCodePlacemarkFactory;
       const ADownloaderFactory: IDownloaderFactory;
-      const AApiKey: string = ''
+      const AApiKey: string = '';
+      const AAllowUseCookie: Boolean = False
     );
   end;
 
@@ -115,14 +124,15 @@ constructor TGeoCoderBasic.Create(
   const AVectorItemSubsetBuilderFactory: IVectorItemSubsetBuilderFactory;
   const APlacemarkFactory: IGeoCodePlacemarkFactory;
   const ADownloaderFactory: IDownloaderFactory;
-  const AApiKey: string
+  const AApiKey: string;
+  const AAllowUseCookie: Boolean
 );
 begin
   inherited Create;
   FInetSettings := AInetSettings;
   FVectorItemSubsetBuilderFactory := AVectorItemSubsetBuilderFactory;
   FPlacemarkFactory := APlacemarkFactory;
-  FDownloader := TDownloaderHttpWithTTL.Create(AGCNotifier, ADownloaderFactory);
+  FDownloader := TDownloaderHttpWithTTL.Create(AGCNotifier, ADownloaderFactory, AAllowUseCookie);
   FApiKey := AApiKey;
 end;
 
@@ -187,7 +197,7 @@ begin
   try
     if ASearch <> '' then begin
       VList := nil;
-      VRequest := PrepareRequest(ASearch, ALocalConverter);
+      VRequest := PrepareRequest(ACancelNotifier, AOperationID, ASearch, ALocalConverter);
       if ACancelNotifier.IsOperationCanceled(AOperationID) then begin
         Exit;
       end;
@@ -251,12 +261,30 @@ begin
   Result := TGeoCodeResult.Create(ASearch, VResultCode, VMessage, VSubset);
 end;
 
-function TGeoCoderBasic.PrepareRequestByURL(const AUrl: AnsiString): IDownloadRequest;
+function TGeoCoderBasic.PrepareRequest(
+  const ACancelNotifier: INotifierOperation;
+  AOperationID: Integer;
+  const ASearch: string;
+  const ALocalConverter: ILocalCoordConverter
+): IDownloadRequest;
+begin
+  Result := PrepareRequest(ASearch, ALocalConverter);
+end;
+
+function TGeoCoderBasic.PrepareRequest(
+  const ASearch: string;
+  const ALocalConverter: ILocalCoordConverter
+): IDownloadRequest;
+begin
+  Result := nil;
+end;
+
+function TGeoCoderBasic.PrepareRequestByUrl(const AUrl: AnsiString): IDownloadRequest;
 begin
   Result := TDownloadRequest.Create(AUrl, '', FInetSettings.GetStatic);
 end;
 
-function TGeoCoderBasic.URLEncode(const S: AnsiString): AnsiString;
+function TGeoCoderBasic.UrlEncode(const S: AnsiString): AnsiString;
 begin
   Result := u_NetworkStrFunc.UrlEncode(S);
 end;

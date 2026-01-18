@@ -85,6 +85,9 @@ uses
   u_GeoCoderByGPSies,
   u_GeoCoderByMarks;
 
+resourcestring
+  rsOfflineSearchFmt = 'Offline search (%s)';
+
 { TGeoCoderListSimple }
 
 constructor TGeoCoderListSimple.Create(
@@ -124,7 +127,7 @@ begin
           APlacemarkFactory,
           ADownloaderFactory,
           VApiKey
-        )
+        ) as IGeoCoder
       );
     VList.Add(VItem);
   end;
@@ -139,7 +142,7 @@ begin
         AVectorItemSubsetBuilderFactory,
         APlacemarkFactory,
         ADownloaderFactory
-      )
+      ) as IGeoCoder
     );
   VList.Add(VItem);
 
@@ -156,7 +159,7 @@ begin
           APlacemarkFactory,
           ADownloaderFactory,
           VApiKey
-        )
+        ) as IGeoCoder
       );
     VList.Add(VItem);
   end;
@@ -165,7 +168,13 @@ begin
     TGeoCoderListEntity.Create(
       CGeoCoderOSMGUID,
       'OSM',
-      TGeoCoderByOSM.Create(AInetConfig, AGCNotifier, AVectorItemSubsetBuilderFactory, APlacemarkFactory, ADownloaderFactory)
+      TGeoCoderByOSM.Create(
+        AInetConfig,
+        AGCNotifier,
+        AVectorItemSubsetBuilderFactory,
+        APlacemarkFactory,
+        ADownloaderFactory
+      ) as IGeoCoder
     );
   VList.Add(VItem);
 
@@ -183,7 +192,13 @@ begin
     TGeoCoderListEntity.Create(
       CGeoCoderWikiMapiaGUID,
       'WikiMapia',
-      TGeoCoderByWikiMapia.Create(AInetConfig, AGCNotifier, AVectorItemSubsetBuilderFactory, APlacemarkFactory, ADownloaderFactory)
+      TGeoCoderByWikiMapia.Create(
+        AInetConfig,
+        AGCNotifier,
+        AVectorItemSubsetBuilderFactory,
+        APlacemarkFactory,
+        ADownloaderFactory
+      ) as IGeoCoder
     );
   VList.Add(VItem);
 
@@ -210,7 +225,15 @@ begin
     TGeoCoderListEntity.Create(
       CGeoCoderIp2geolocationGUID,
       'IP2GeoLocation',
-      TGeoCoderByIp2geolocation.Create(AInetConfig, AGCNotifier, AVectorItemSubsetBuilderFactory, APlacemarkFactory, ADownloaderFactory)
+      TGeoCoderByIp2geolocation.Create(
+        AInetConfig,
+        AGCNotifier,
+        AVectorItemSubsetBuilderFactory,
+        APlacemarkFactory,
+        ADownloaderFactory,
+        '',
+        True // AllowUseCookie
+      ) as IGeoCoder
     );
   VList.Add(VItem);
 
@@ -228,7 +251,15 @@ begin
     TGeoCoderListEntity.Create(
       CGeoCoderURLGUID,
       'URL',
-      TGeoCoderByURL.Create(AInetConfig, AGCNotifier, AProjectionSetFactory, AVectorItemSubsetBuilderFactory, APlacemarkFactory, ADownloaderFactory, ACoordToStringConverter)
+      TGeoCoderByURL.Create(
+        AInetConfig,
+        AGCNotifier,
+        AProjectionSetFactory,
+        AVectorItemSubsetBuilderFactory,
+        APlacemarkFactory,
+        ADownloaderFactory,
+        ACoordToStringConverter
+      ) as IGeoCoder
     );
   VList.Add(VItem);
 
@@ -237,8 +268,16 @@ begin
     VItem :=
       TGeoCoderListEntity.Create(
         CGeoCoderGpxGUID,
-        Format(_('Offline search (%s)'), ['*.gpx']),
-        TGeoCoderByGpx.Create(VPath, AVectorItemSubsetBuilderFactory, APlacemarkFactory, ACoordToStringConverter, AVectorGeometryLonLatFactory, AVectorDataFactory, AVectorDataItemMainInfoFactory)
+        Format(rsOfflineSearchFmt, ['*.gpx']),
+        TGeoCoderByGpx.Create(
+          VPath,
+          AVectorItemSubsetBuilderFactory,
+          APlacemarkFactory,
+          ACoordToStringConverter,
+          AVectorGeometryLonLatFactory,
+          AVectorDataFactory,
+          AVectorDataItemMainInfoFactory
+        ) as IGeoCoder
       );
     VList.Add(VItem);
   end;
@@ -248,8 +287,13 @@ begin
     VItem :=
       TGeoCoderListEntity.Create(
         CGeoCoderPolishMapGUID,
-        Format(_('Offline search (%s)'), ['*.mp']),
-        TGeoCoderByPolishMap.Create(VPath, AVectorItemSubsetBuilderFactory, APlacemarkFactory, ACoordToStringConverter)
+        Format(rsOfflineSearchFmt, ['*.mp']),
+        TGeoCoderByPolishMap.Create(
+          VPath,
+          AVectorItemSubsetBuilderFactory,
+          APlacemarkFactory,
+          ACoordToStringConverter
+        ) as IGeoCoder
       );
     VList.Add(VItem);
   end;
@@ -259,8 +303,13 @@ begin
     VItem :=
       TGeoCoderListEntity.Create(
         CGeoCoderGeonamesTXTGUID,
-        Format(_('Offline search (%s)'), ['*.txt']),
-        TGeoCoderByTXT.Create(VPath, AVectorItemSubsetBuilderFactory, APlacemarkFactory, ACoordToStringConverter)
+        Format(rsOfflineSearchFmt, ['*.txt']),
+        TGeoCoderByTXT.Create(
+          VPath,
+          AVectorItemSubsetBuilderFactory,
+          APlacemarkFactory,
+          ACoordToStringConverter
+        ) as IGeoCoder
       );
     VList.Add(VItem);
   end;
@@ -269,7 +318,12 @@ begin
     TGeoCoderListEntity.Create(
       CGeoCoderCoordGUID,
       _('Coordinates'),
-      TGeoCoderByCoord.Create(AVectorItemSubsetBuilderFactory, APlacemarkFactory, ACoordToStringConverter, AProjectionSetFactory)
+      TGeoCoderByCoord.Create(
+        AVectorItemSubsetBuilderFactory,
+        APlacemarkFactory,
+        ACoordToStringConverter,
+        AProjectionSetFactory
+      ) as IGeoCoder
     );
   VList.Add(VItem);
 
@@ -277,7 +331,11 @@ begin
     TGeoCoderListEntity.Create(
       CGeoCoderMarksGUID,
       _('Marks'),
-      TGeoCoderByMarks.Create(AVectorItemSubsetBuilderFactory, APlacemarkFactory, AMarksDb)
+      TGeoCoderByMarks.Create(
+        AVectorItemSubsetBuilderFactory,
+        APlacemarkFactory,
+        AMarksDb
+      ) as IGeoCoder
     );
   VList.Add(VItem);
 

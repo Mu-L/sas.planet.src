@@ -37,9 +37,12 @@ type
   TGeoCoderByIp2geolocation = class(TGeoCoderBasic)
   protected
     function PrepareRequest(
+      const ACancelNotifier: INotifierOperation;
+      AOperationID: Integer;
       const ASearch: string;
       const ALocalConverter: ILocalCoordConverter
     ): IDownloadRequest; override;
+
     function ParseResultToPlacemarksList(
       const ACancelNotifier: INotifierOperation;
       AOperationID: Integer;
@@ -55,6 +58,7 @@ uses
   RegExpr,
   t_GeoTypes,
   i_VectorDataItemSimple,
+  u_DownloadRequest,
   u_InterfaceListSimple,
   u_ResStrings;
 
@@ -165,15 +169,27 @@ begin
 end;
 
 function TGeoCoderByIp2geolocation.PrepareRequest(
+  const ACancelNotifier: INotifierOperation;
+  AOperationID: Integer;
   const ASearch: string;
   const ALocalConverter: ILocalCoordConverter
 ): IDownloadRequest;
 begin
-  // https://ip2geolocation.com/?ip=37.78.14.148&lang=en
-  Result :=
-    PrepareRequestByURL(
-      'https://ip2geolocation.com/?ip=' + URLEncode(AnsiToUtf8(ASearch)) + '&lang=en'
-    );
+  // Setup Cookies
+  Result := PrepareRequestByURL('https://ip2geolocation.com/');
+  Self.Downloader.DoRequest(Result, ACancelNotifier, AOperationID);
+
+  // Make Request
+  Result := TDownloadRequest.Create(
+    'https://ip2geolocation.com/index.php/en/?ip=' + URLEncode(AnsiToUtf8(ASearch)),
+
+    'Accept: */*' + #13#10 +
+    'Accept-Language: en-US' + #13#10 +
+    'Accept-Encoding: gzip, deflate' + #13#10 +
+    'Referer: https://ip2geolocation.com/?ip=' + AnsiString(ASearch),
+
+    Self.InetSettings.GetStatic
+  );
 end;
 
 end.
