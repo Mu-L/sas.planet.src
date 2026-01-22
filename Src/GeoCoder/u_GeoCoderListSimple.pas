@@ -71,18 +71,15 @@ uses
   u_GeoCoderByGoogle,
   u_GeoCoderByGoogleEarth,
   u_GeoCoderByYandex,
-  u_GeoCoderBy2GIS,
   u_GeoCoderByOSM,
   u_GeoCoderByIp2geolocation,
   u_GeoCoderByWikiMapia,
   u_GeoCoderByRosreestr,
-  u_GeoCoderByNavitel,
   u_GeoCoderByURL,
   u_GeoCoderByPolishMap,
   u_GeoCoderByGpx,
   u_GeoCoderByTXT,
   u_GeoCoderByCoord,
-  u_GeoCoderByGPSies,
   u_GeoCoderByMarks;
 
 resourcestring
@@ -178,16 +175,6 @@ begin
     );
   VList.Add(VItem);
 
-// 2GIS is not working: http://www.sasgis.org/mantis/view.php?id=1120
-//
-//  VItem :=
-//    TGeoCoderListEntity.Create(
-//      CGeoCoder2GISGUID,
-//      '2GIS',
-//      TGeoCoderBy2GIS.Create(AInetConfig, AGCNotifier, AVectorItemSubsetBuilderFactory, APlacemarkFactory, ADownloaderFactory)
-//    );
-//  VList.Add(VItem);
-
   VItem :=
     TGeoCoderListEntity.Create(
       CGeoCoderWikiMapiaGUID,
@@ -236,16 +223,6 @@ begin
       ) as IGeoCoder
     );
   VList.Add(VItem);
-
-//  Navitel is not working: http://www.sasgis.org/mantis/view.php?id=3772
-//
-//  VItem :=
-//    TGeoCoderListEntity.Create(
-//      CGeoCoderNavitelGUID,
-//      _('Navitel'),
-//      TGeoCoderByNavitel.Create(AInetConfig, AGCNotifier, AVectorItemSubsetBuilderFactory, APlacemarkFactory, ADownloaderFactory)
-//    );
-//  VList.Add(VItem);
 
   VItem :=
     TGeoCoderListEntity.Create(
@@ -338,16 +315,6 @@ begin
       ) as IGeoCoder
     );
   VList.Add(VItem);
-
-//  www.GPSies.com is not working: http://www.sasgis.org/mantis/view.php?id=3771
-//
-//  VItem :=
-//    TGeoCoderListEntity.Create(
-//      CGeoCoderGPSiesGUID,
-//      'www.GPSies.com',
-//      TGeoCoderByGPSies.Create(AInetConfig, AGCNotifier, AVectorItemSubsetBuilderFactory, APlacemarkFactory, ADownloaderFactory)
-//    );
-//  VList.Add(VItem);
 
   inherited Create(VList.MakeStaticAndClear);
 end;
