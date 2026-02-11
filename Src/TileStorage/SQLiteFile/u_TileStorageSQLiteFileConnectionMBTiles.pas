@@ -176,7 +176,9 @@ begin
   Assert(FFileInfo <> nil);
 
   if FFileInfo.TryGetMetadataValue('format', VValue) then begin
-    if not SameText(FMainContentType.GetDefaultExt, '.' + VValue) then begin
+    if not SameText(FMainContentType.GetDefaultExt, '.' + VValue) and // extension
+       not SameText(FMainContentType.GetContentType, VValue) // content-type
+    then begin
       raise Exception.CreateFmt(
         'MBTiles: The detected tile format "%s" does not match the provided content type "%s"',
         [VValue, FMainContentType.GetContentType]
