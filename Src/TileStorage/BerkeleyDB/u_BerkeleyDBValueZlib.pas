@@ -24,17 +24,18 @@ unit u_BerkeleyDBValueZlib;
 interface
 
 procedure ZlibCompress(
-    const AInData: Pointer;
-    const AInSize: Integer;
-    out AOutData: Pointer;
-    out AOutSize: Integer
-  );
+  const AInData: Pointer;
+  const AInSize: Integer;
+  out AOutData: Pointer;
+  out AOutSize: Integer
+);
+
 function ZlibDecompress(
-    const AInData: Pointer;
-    const AInSize: Integer;
-    out AOutData: Pointer;
-    out AOutSize: Integer
-  ): Boolean;
+  const AInData: Pointer;
+  const AInSize: Integer;
+  out AOutData: Pointer;
+  out AOutSize: Integer
+): Boolean;
 
 implementation
 
