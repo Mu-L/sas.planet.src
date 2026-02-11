@@ -39,7 +39,7 @@ function ZlibDecompress(
 implementation
 
 uses
-  ZLibEx;
+  System.Zlib;
 
 const
   cBerkeleyValueZlibMagic: Cardinal = $4C41565A; // ZVAL (Zlib VALue)
@@ -64,7 +64,6 @@ begin
     FreeMemory(VZlibData);
   end;
 end;
-
 
 function ZlibDecompress(
   const AInData: Pointer;
