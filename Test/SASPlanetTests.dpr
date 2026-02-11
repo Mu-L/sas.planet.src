@@ -17,6 +17,7 @@ uses
   u_BitmapTileLibPng_Test in 'u_BitmapTileLibPng_Test.pas',
   u_BitmapTileSaveLoadFactory_Test in 'u_BitmapTileSaveLoadFactory_Test.pas',
   u_CalcTilesInPolygon_Test in 'u_CalcTilesInPolygon_Test.pas',
+  u_ContentDecoder_Test in 'u_ContentDecoder_Test.pas',
   u_CoordToStringConverter_Test in 'u_CoordToStringConverter_Test.pas',
   u_Datum_Test in 'u_Datum_Test.pas',
   u_EnumDoublePointClosePoly_Test in 'u_EnumDoublePointClosePoly_Test.pas',

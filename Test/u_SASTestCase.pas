@@ -4,11 +4,14 @@ interface
 
 uses
   TestFramework,
+  Classes,
   t_GeoTypes;
 
 type
   TSASTestCase = class(TTestCase)
   public
+    procedure CheckStreamsEqual(S1, S2: TMemoryStream; msg: string = '');
+
     procedure CheckDoublePointsEquals(expected, actual: TDoublePoint; delta: Extended; msg: string = ''); overload; virtual;
     procedure CheckDoublePointsEquals(expected, actual: TDoublePoint; msg: string = ''); overload; virtual;
   end;
@@ -20,6 +23,17 @@ uses
   Math;
 
 { TSASTestCase }
+
+procedure TSASTestCase.CheckStreamsEqual(S1, S2: TMemoryStream; msg: string);
+begin
+  if (S1 = nil) or
+     (S2 = nil) or
+     (S1.Size <> S2.Size) or
+     not CompareMem(S1.Memory, S2.Memory, S1.Size)
+  then begin
+    Fail(msg, ReturnAddress);
+  end;
+end;
 
 procedure TSASTestCase.CheckDoublePointsEquals(expected, actual: TDoublePoint; delta: Extended; msg: string);
 var
