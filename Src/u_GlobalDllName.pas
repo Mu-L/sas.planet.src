@@ -49,6 +49,7 @@ type
     Geodesic: string;
     MiniZip: string;
     ImageQuant: string;
+    Zstd: string;
 
     procedure Init;
   end;
@@ -142,6 +143,7 @@ begin
     Self.Geodesic := 'geodesic.dll';
     Self.MiniZip := 'libminizip.dll';
     Self.ImageQuant := 'libimagequant.dll';
+    Self.Zstd := 'libzstd.dll';
   end else begin
     VPath := VAppPath + {$IFDEF WIN32} 'lib32' {$ELSE} 'lib64' {$ENDIF} + PathDelim;
 
@@ -159,6 +161,7 @@ begin
     Self.Geodesic := 'libproj-25.dll';
     Self.MiniZip := 'libminizip-ng-1.dll';
     Self.ImageQuant := 'imagequant.dll';
+    Self.Zstd := 'libzstd.dll';
   end;
 
   if VPath <> '' then begin

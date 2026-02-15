@@ -20,6 +20,7 @@ type
     procedure TestDecodeGZip;
     procedure TestDecodeZlibDeflate;
     procedure TestDecodeRawDeflate;
+    procedure TestDecodeZstd;
   end;
 
 implementation
@@ -35,6 +36,7 @@ const
   CGZipFileName = 'gzip.bin';
   CRawDeflateFileName = 'deflate-raw.bin';
   CZlibDeflateFileName = 'deflate-zlib.bin';
+  CZstdFileName = 'zstd.bin';
 
 function GetTestDataFullFileName(const AFileName: string): string;
 begin
@@ -113,6 +115,11 @@ begin
   // The debugger might break on the internal handled exception - simply continue execution.
   // The test itself must pass without raising any unhandled exceptions.
   TestDecode('deflate', CRawDeflateFileName);
+end;
+
+procedure TestContentDecoder.TestDecodeZstd;
+begin
+  TestDecode('zstd', CZstdFileName);
 end;
 
 initialization
