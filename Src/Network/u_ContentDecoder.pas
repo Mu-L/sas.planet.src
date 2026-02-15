@@ -33,6 +33,7 @@ type
 
     class procedure DoDecodeGZip(var AContent: TMemoryStream); static;
     class procedure DoDecodeDeflate(var AContent: TMemoryStream); static;
+    class procedure DoDecodeBrotli(var AContent: TMemoryStream); static;
     class procedure DoDecodeZstd(var AContent: TMemoryStream); static;
 
     class procedure Decode(const AContentEncoding: AnsiString; var AContent: TMemoryStream); static;
@@ -44,6 +45,7 @@ implementation
 
 uses
   SynZip,
+  libbrotli,
   libzstd,
   u_GlobalDllName;
 
@@ -83,6 +85,10 @@ end;
 class function TContentDecoder.GetDecodersStr: AnsiString;
 begin
   Result := 'gzip, deflate';
+
+  if LoadLibBrotliDec(GDllName.BrotliDec, False) then begin
+    Result := Result + ', br';
+  end;
 
   if LoadLibZstd(GDllName.Zstd, False) then begin
     Result := Result + ', zstd';
@@ -140,10 +146,23 @@ begin
   end;
 end;
 
-procedure DoDecodeBrotli(var AContent: TMemoryStream);
+class procedure TContentDecoder.DoDecodeBrotli(var AContent: TMemoryStream);
+var
+  VStream: TMemoryStream;
 begin
-  // ToDo
-  raise EContentDecoderError.Create('Brotli encoding is not supported yet.');
+  if not LoadLibBrotliDec(GDllName.BrotliDec, True) then begin
+    raise EContentDecoderError.Create('Cannot load Brotli decoder library!');
+  end;
+  VStream := TMemoryStream.Create;
+  try
+    DecompressBrotli(AContent.Memory, AContent.Size, VStream);
+    FreeAndNil(AContent);
+    AContent := VStream;
+    AContent.Position := 0;
+    VStream := nil;
+  finally
+    VStream.Free;
+  end;
 end;
 
 class procedure TContentDecoder.DoDecodeZstd(var AContent: TMemoryStream);

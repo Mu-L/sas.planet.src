@@ -8,7 +8,8 @@ uses
   System.SysUtils,
   System.Zlib,
   SynZip,
-  libzstd in '..\..\Includes\libzstd.pas';
+  libzstd in '..\..\Includes\libzstd.pas',
+  libbrotli in '..\..\Includes\libbrotli.pas';
 
 const
   COutputPath = '..\..\Test\data\compressed\';
@@ -51,6 +52,12 @@ begin
   if LoadLibZstd then begin
     VCompressed := CompressZstd(AData);
     SaveData('zstd.bin', VCompressed);
+  end;
+
+  // brotli
+  if LoadLibBrotliEnc then begin
+    VCompressed := CompressBrotli(AData);
+    SaveData('brotli.bin', VCompressed);
   end;
 end;
 

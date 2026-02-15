@@ -50,6 +50,7 @@ type
     MiniZip: string;
     ImageQuant: string;
     Zstd: string;
+    BrotliDec: string;
 
     procedure Init;
   end;
@@ -144,6 +145,7 @@ begin
     Self.MiniZip := 'libminizip.dll';
     Self.ImageQuant := 'libimagequant.dll';
     Self.Zstd := 'libzstd.dll';
+    Self.BrotliDec := 'libbrotlidec.dll';
   end else begin
     VPath := VAppPath + {$IFDEF WIN32} 'lib32' {$ELSE} 'lib64' {$ENDIF} + PathDelim;
 
@@ -162,6 +164,7 @@ begin
     Self.MiniZip := 'libminizip-ng-1.dll';
     Self.ImageQuant := 'imagequant.dll';
     Self.Zstd := 'libzstd.dll';
+    Self.BrotliDec := 'libbrotlidec.dll';
   end;
 
   if VPath <> '' then begin
