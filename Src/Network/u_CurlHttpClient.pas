@@ -250,9 +250,7 @@ begin
 
   FCertFileName := ACertFileName;
   if (FCertFileName <> '') and not FileExists(string(FCertFileName)) then begin
-    raise ECurl.CreateFmt(
-      'Can''t find curl certificate: %s', [FCertFileName]
-    );
+    raise ECurl.CreateFmt('Can''t find curl certificate: %s', [FCertFileName]);
   end;
 
   FOptions := cCurlDefaultOptions;
@@ -327,12 +325,13 @@ begin
   CurlCheck( curl.easy_setopt(FCurl, coConnectTimeoutMS, FOptions.ConnectionTimeOutMS) );
   CurlCheck( curl.easy_setopt(FCurl, coFollowLocation, cBoolToLong[FOptions.FollowLocation]) );
 
+  if FCertFileName <> '' then begin
+    CurlCheck( curl.easy_setopt(FCurl, coCAInfo, PAnsiChar(FCertFileName)) );
+  end;
+
   if FOptions.IgnoreSSLCertificateErrors then begin
     CurlCheck( curl.easy_setopt(FCurl, coSSLVerifyPeer, 0) );
     CurlCheck( curl.easy_setopt(FCurl, coSSLVerifyHost, 0) );
-  end else
-  if FCertFileName <> '' then begin
-    CurlCheck( curl.easy_setopt(FCurl, coCAInfo, Pointer(FCertFileName)) );
   end;
 
   if FOptions.StoreCookie then begin

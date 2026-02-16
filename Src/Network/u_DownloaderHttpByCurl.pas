@@ -179,7 +179,11 @@ begin
 
   VCertFileName := '';
   if not FHttpOptions.IgnoreSSLCertificateErrors then begin
-    VCertFileName := StringToAnsiSafe(ExtractFilePath(ParamStr(0)) + cCurlDefaultCertFileName)
+    VCertFileName := StringToAnsiSafe(ExtractFilePath(ParamStr(0)) + cCurlDefaultCertFileName);
+    if not FileExists(VCertFileName) then begin
+      // The internal certificate is missing, so let libcurl use the default system certificate instead.
+      VCertFileName := '';
+    end;
   end;
 
   FHttpClient :=
