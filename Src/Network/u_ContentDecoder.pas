@@ -29,14 +29,15 @@ uses
 
 type
   TContentDecoder = record
-    class function GetDecodersStr: AnsiString; static;
+    class function GetDecodersStr: RawByteString; static;
+    class procedure RemoveUnsupportedDecoders(var AEncoders: RawByteString); static;
 
     class procedure DoDecodeGZip(var AContent: TMemoryStream); static;
     class procedure DoDecodeDeflate(var AContent: TMemoryStream); static;
     class procedure DoDecodeBrotli(var AContent: TMemoryStream); static;
     class procedure DoDecodeZstd(var AContent: TMemoryStream); static;
 
-    class procedure Decode(const AContentEncoding: AnsiString; var AContent: TMemoryStream); static;
+    class procedure Decode(const AContentEncoding: RawByteString; var AContent: TMemoryStream); static;
   end;
 
   EContentDecoderError = class(Exception);
@@ -44,6 +45,8 @@ type
 implementation
 
 uses
+  Types,
+  StrUtils,
   SynZip,
   libbrotli,
   libzstd,
@@ -59,7 +62,7 @@ type
     etUnknown
   );
 
-function GetEncodingType(const AContentEncoding: AnsiString): TContentEncodingType; inline;
+function GetEncodingType(const AContentEncoding: RawByteString): TContentEncodingType;
 begin
   if AContentEncoding = 'gzip' then begin
     Result := etGZip;
@@ -82,7 +85,7 @@ end;
 
 { TContentDecoder }
 
-class function TContentDecoder.GetDecodersStr: AnsiString;
+class function TContentDecoder.GetDecodersStr: RawByteString;
 begin
   Result := 'gzip, deflate';
 
@@ -92,6 +95,63 @@ begin
 
   if LoadLibZstd(GDllName.Zstd, False) then begin
     Result := Result + ', zstd';
+  end;
+end;
+
+class procedure TContentDecoder.RemoveUnsupportedDecoders(var AEncoders: RawByteString);
+var
+  I: Integer;
+  VEncoders: TStringDynArray;
+  VEncoder: RawByteString;
+  VEncodingType: TContentEncodingType;
+  VResult: RawByteString;
+  VIsSupported: Boolean;
+begin
+  if AEncoders = '' then begin
+    Exit;
+  end;
+
+  VResult := '';
+  VEncoders := SplitString(LowerCase(string(AEncoders)), ',');
+
+  for I := 0 to High(VEncoders) do begin
+    VEncoder := RawByteString(Trim(VEncoders[I]));
+
+    if VEncoder = '' then begin
+      Continue;
+    end;
+
+    VEncodingType := GetEncodingType(VEncoder);
+
+    case VEncodingType of
+      etGZip, etDeflate, etIdentity: begin
+        VIsSupported := True;
+      end;
+
+      etBrotli: begin
+        VIsSupported := LoadLibBrotliDec(GDllName.BrotliDec, False);
+      end;
+
+      etZstd: begin
+        VIsSupported := LoadLibZstd(GDllName.Zstd, False);
+      end;
+    else
+      VIsSupported := False;
+    end;
+
+    if not VIsSupported then begin
+      Continue;
+    end;
+
+    if VResult <> '' then begin
+      VResult := VResult + ', ' + VEncoder;
+    end else begin
+      VResult := VEncoder;
+    end;
+  end;
+
+  if AEncoders <> VResult then begin
+    AEncoders := VResult;
   end;
 end;
 
@@ -184,7 +244,7 @@ begin
   end;
 end;
 
-class procedure TContentDecoder.Decode(const AContentEncoding: AnsiString; var AContent: TMemoryStream);
+class procedure TContentDecoder.Decode(const AContentEncoding: RawByteString; var AContent: TMemoryStream);
 var
   VEncoding: TContentEncodingType;
 begin

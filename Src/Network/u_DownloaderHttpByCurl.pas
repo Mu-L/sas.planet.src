@@ -362,6 +362,8 @@ function TDownloaderHttpByCurl.OnBeforeRequest(
   end;
 
 var
+  VEncodingCur: RawByteString;
+  VEncodingOld: RawByteString;
   VPostData: IBinaryData;
   VInetConfig: IInetConfigStatic;
   VProxyConfig: IProxyConfigStatic;
@@ -417,8 +419,22 @@ begin
   end;
 
   if FAcceptEncoding then begin
-    DeleteHeaderValueUp(FHttpRequest.Headers, 'ACCEPT-ENCODING');
-    AddHeaderValue(FHttpRequest.Headers, 'Accept-Encoding', TContentDecoder.GetDecodersStr);
+    VEncodingOld := GetHeaderValueUp(FHttpRequest.Headers, 'ACCEPT-ENCODING');
+    VEncodingCur := VEncodingOld;
+    if VEncodingCur = '' then begin
+      // Use default value
+      AddHeaderValue(FHttpRequest.Headers, 'Accept-Encoding', TContentDecoder.GetDecodersStr);
+    end else begin
+      // Allow only supported encodings
+      TContentDecoder.RemoveUnsupportedDecoders(VEncodingCur);
+      if VEncodingCur <> '' then begin
+        if VEncodingCur <> VEncodingOld then begin
+          ReplaceHeaderValueUp(FHttpRequest.Headers, 'ACCEPT-ENCODING', VEncodingCur);
+        end;
+      end else begin
+        DeleteHeaderValueUp(FHttpRequest.Headers, 'ACCEPT-ENCODING');
+      end;
+    end;
   end;
 
   VProxyConfig := VInetConfig.ProxyConfigStatic;

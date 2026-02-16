@@ -484,6 +484,8 @@ var
   VCookie: AnsiString;
   VUserAgent: AnsiString;
   VProxyHost: AnsiString;
+  VEncodingCur: RawByteString;
+  VEncodingOld: RawByteString;
   VPos: Integer;
   VOptions: TALWininetHttpClientInternetOptionSet;
 begin
@@ -516,7 +518,16 @@ begin
   end;
 
   if FAcceptEncoding then begin
-    FHttpClient.RequestHeader.AcceptEncoding := TContentDecoder.GetDecodersStr;
+    VEncodingOld := FHttpClient.RequestHeader.AcceptEncoding;
+    VEncodingCur := VEncodingOld;
+    if VEncodingCur = '' then begin
+      VEncodingCur := TContentDecoder.GetDecodersStr;
+    end else begin
+      TContentDecoder.RemoveUnsupportedDecoders(VEncodingCur);
+    end;
+    if VEncodingCur <> VEncodingOld then begin
+      FHttpClient.RequestHeader.AcceptEncoding := VEncodingCur;
+    end;
   end;
 
   {$IFDEF WRITE_HTTP_LOG}
