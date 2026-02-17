@@ -30,37 +30,39 @@ uses
   SyncObjs;
 
 type
+  size_t = NativeUInt;
+  
   PZSTD_DStream = Pointer;
 
   ZSTD_inBuffer = record
     src: Pointer;
-    size: NativeUInt;
-    pos: NativeUInt;
+    size: size_t;
+    pos: size_t;
   end;
+  PZSTD_inBuffer = ^ZSTD_inBuffer;
 
   ZSTD_outBuffer = record
     dst: Pointer;
-    size: NativeUInt;
-    pos: NativeUInt;
+    size: size_t;
+    pos: size_t;
   end;
+  PZSTD_outBuffer = ^ZSTD_outBuffer;
 
 var
-  ZSTD_compress: function(dst: Pointer; dstCapacity: NativeUInt; src: Pointer; srcSize: NativeUInt; ACompressionLevel: Integer): NativeUInt; cdecl;
-  ZSTD_decompress: function(dst: Pointer; dstCapacity: NativeUInt; src: Pointer; compressedSize: NativeUInt): NativeUInt; cdecl;
+  ZSTD_compress: function(dst: Pointer; dstCapacity: size_t; src: Pointer; srcSize: size_t; compressionLevel: Integer): size_t; cdecl;
+  ZSTD_decompress: function(dst: Pointer; dstCapacity: size_t; src: Pointer; compressedSize: size_t): size_t; cdecl;
 
-  ZSTD_compressBound: function(srcSize: NativeUInt): NativeUInt; cdecl;
-  ZSTD_getFrameContentSize: function(src: Pointer; srcSize: NativeUInt): UInt64; cdecl;
+  ZSTD_compressBound: function(srcSize: size_t): size_t; cdecl;
+  ZSTD_getFrameContentSize: function(src: Pointer; srcSize: size_t): UInt64; cdecl;
 
-  ZSTD_isError: function(code: NativeUInt): Cardinal; cdecl;
-  ZSTD_getErrorName: function(code: NativeUInt): PAnsiChar; cdecl;
+  ZSTD_isError: function(code: size_t): Cardinal; cdecl;
+  ZSTD_getErrorName: function(code: size_t): PAnsiChar; cdecl;
 
   // Streaming decompression API
   ZSTD_createDStream: function: PZSTD_DStream; cdecl;
-  ZSTD_freeDStream: function(zds: PZSTD_DStream): NativeUInt; cdecl;
-  ZSTD_initDStream: function(zds: PZSTD_DStream): NativeUInt; cdecl;
-  ZSTD_decompressStream: function(zds: PZSTD_DStream; var output: ZSTD_outBuffer; var input: ZSTD_inBuffer): NativeUInt; cdecl;
-  ZSTD_DStreamInSize: function: NativeUInt; cdecl;
-  ZSTD_DStreamOutSize: function: NativeUInt; cdecl;
+  ZSTD_freeDStream: function(zds: PZSTD_DStream): size_t; cdecl;
+  ZSTD_initDStream: function(zds: PZSTD_DStream): size_t; cdecl;
+  ZSTD_decompressStream: function(zds: PZSTD_DStream; output: PZSTD_outBuffer; input: PZSTD_inBuffer): size_t; cdecl;
 
 const
   ZSTD_CONTENTSIZE_UNKNOWN = UInt64(-1);
@@ -152,14 +154,10 @@ begin
       GetProc(@ZSTD_getFrameContentSize, 'ZSTD_getFrameContentSize');
       GetProc(@ZSTD_isError, 'ZSTD_isError');
       GetProc(@ZSTD_getErrorName, 'ZSTD_getErrorName');
-
-      // Streaming decompression API
       GetProc(@ZSTD_createDStream, 'ZSTD_createDStream');
       GetProc(@ZSTD_freeDStream, 'ZSTD_freeDStream');
       GetProc(@ZSTD_initDStream, 'ZSTD_initDStream');
       GetProc(@ZSTD_decompressStream, 'ZSTD_decompressStream');
-      GetProc(@ZSTD_DStreamInSize, 'ZSTD_DStreamInSize');
-      GetProc(@ZSTD_DStreamOutSize, 'ZSTD_DStreamOutSize');
 
       GState.Value := LIBZSTD_STATE_LOADED;
       Result := True;
@@ -196,14 +194,10 @@ begin
     @ZSTD_getFrameContentSize := nil;
     @ZSTD_isError := nil;
     @ZSTD_getErrorName := nil;
-
-    // Streaming decompression API
     @ZSTD_createDStream := nil;
     @ZSTD_freeDStream := nil;
     @ZSTD_initDStream := nil;
     @ZSTD_decompressStream := nil;
-    @ZSTD_DStreamInSize := nil;
-    @ZSTD_DStreamOutSize := nil;
 
     if GHandle <> 0 then begin
       FreeLibrary(GHandle);
@@ -242,11 +236,10 @@ begin
   SetLength(Result, VMaxOutputSize);
 
   // Compress
-  VResult := ZSTD_compress(PByte(Result), VMaxOutputSize, PByte(AData), VInputSize, ACompressionLevel);
+  VResult := ZSTD_compress(Pointer(Result), VMaxOutputSize, Pointer(AData), VInputSize, ACompressionLevel);
 
   // Check for error
   if ZSTD_isError(VResult) <> 0 then begin
-    Result := '';
     raise ELibZstdError.CreateFmt('Zstd compression failed: %s', [string(ZSTD_getErrorName(VResult))]);
   end;
 
@@ -267,7 +260,7 @@ var
   VOutBuffer: ZSTD_outBuffer;
   VTempBuffer: array [0..ZSTD_BLOCKSIZE_MAX-1] of Byte;
 begin
-  if ASize = 0 then begin
+  if (AData = nil) or (ASize = 0) then begin
     Exit;
   end;
 
@@ -301,7 +294,7 @@ begin
         VOutBuffer.size := Length(VTempBuffer);
         VOutBuffer.pos := 0;
 
-        VResult := ZSTD_decompressStream(VDStream, VOutBuffer, VInBuffer);
+        VResult := ZSTD_decompressStream(VDStream, @VOutBuffer, @VInBuffer);
 
         if ZSTD_isError(VResult) <> 0 then begin
           raise ELibZstdError.CreateFmt('Zstd decompression failed: %s', [string(ZSTD_getErrorName(VResult))]);
@@ -311,7 +304,25 @@ begin
           ADest.WriteBuffer(VTempBuffer[0], VOutBuffer.pos);
         end;
 
-      until (VInBuffer.pos >= VInBuffer.size) and (VOutBuffer.pos <> VOutBuffer.size);
+        if VOutBuffer.pos = VOutBuffer.size then begin
+          // The output buffer was filled completely, but zstd may still hold decoded
+          // bytes in its internal buffers. The spec requires calling ZSTD_decompressStream
+          // again with a fresh output buffer (and no new input) to flush the remainder.
+          // https://facebook.github.io/zstd/zstd_manual.html#Chapter9
+          Continue;
+        end;
+
+        if VInBuffer.pos >= VInBuffer.size then begin
+          // All input has been consumed
+          if VResult = 0 then begin
+            // Completed successfully
+            Break;
+          end else begin
+            // The decoder expected more input to complete the frame, so the source data is truncated
+            raise ELibZstdError.Create('Zstd decompression failed: truncated frame');
+          end;
+        end;
+      until False;
     finally
       ZSTD_freeDStream(VDStream);
     end;
@@ -326,7 +337,7 @@ begin
       raise ELibZstdError.CreateFmt('Zstd decompression failed: %s', [string(ZSTD_getErrorName(VResult))]);
     end;
 
-    if VResult <> ADest.Size then begin
+    if VResult <> VDecompressedSize then begin
       ADest.Size := VResult;
     end;
   end;
