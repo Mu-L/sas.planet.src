@@ -21,6 +21,9 @@ const
   BROTLI_MIN_QUALITY = 0;
   BROTLI_MAX_QUALITY = 11;
   BROTLI_DEFAULT_QUALITY = 6;
+
+  BROTLI_MIN_WINDOW_BITS = 10;
+  BROTLI_MAX_WINDOW_BITS = 24;
   BROTLI_DEFAULT_WINDOW = 22;
 
   BROTLI_MODE_GENERIC = 0;
@@ -46,35 +49,55 @@ implementation
 uses
   SyncObjs;
 
-var
-  BrotliEncoderCompress: function(quality: Integer; lgwin: Integer; mode: Integer;
-    input_size: NativeUInt; input_buffer: PByte; encoded_size: PNativeUInt; encoded_buffer: PByte): Integer; cdecl;
-  BrotliEncoderMaxCompressedSize: function(input_size: NativeUInt): NativeUInt; cdecl;
+{$MINENUMSIZE 4}
 
 type
-  PPByte = ^PByte;
+  uint8_t = Byte;
+  puint8_t = ^uint8_t;
+  ppuint8_t = ^puint8_t;
+
+  uint32_t = Cardinal;
+
+  size_t = NativeUInt;
+  psize_t = ^size_t;
+
+  TBrotliBool = (
+    BROTLI_FALSE = 0,
+    BROTLI_TRUE = 1
+  );
+
+var
+  BrotliEncoderCompress: function(quality: Integer; lgwin: Integer; mode: Integer;
+    input_size: size_t; input_buffer: puint8_t; encoded_size: psize_t; encoded_buffer: puint8_t): TBrotliBool; cdecl;
+
+  BrotliEncoderMaxCompressedSize: function(input_size: size_t): size_t; cdecl;
+
+type
   PBrotliDecoderState = Pointer;
-  TBrotliDecoderResult = Integer;
-  TBrotliDecoderParameter = Integer;
+
+  TBrotliDecoderResult = (
+    BROTLI_DECODER_RESULT_ERROR = 0,
+    BROTLI_DECODER_RESULT_SUCCESS = 1,
+    BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT = 2,
+    BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT = 3
+  );
+
+  TBrotliDecoderParameter = (
+    BROTLI_DECODER_PARAM_DISABLE_RING_BUFFER_REALLOCATION = 0,
+    BROTLI_DECODER_PARAM_LARGE_WINDOW = 1
+  );
 
 var
   BrotliDecoderCreateInstance: function(alloc_func: Pointer; free_func: Pointer; opaque: Pointer): PBrotliDecoderState; cdecl;
   BrotliDecoderDestroyInstance: procedure(state: PBrotliDecoderState); cdecl;
-  BrotliDecoderSetParameter: function(state: PBrotliDecoderState; param: TBrotliDecoderParameter; value: Cardinal): Integer; cdecl;
-  BrotliDecoderDecompressStream: function(state: PBrotliDecoderState; available_in: PNativeUInt; next_in: PPByte;
-    available_out: PNativeUInt; next_out: PPByte; total_out: PNativeUInt): TBrotliDecoderResult; cdecl;
-  BrotliDecoderIsFinished: function(state: PBrotliDecoderState): Integer; cdecl;
+
+  BrotliDecoderSetParameter: function(state: PBrotliDecoderState; param: TBrotliDecoderParameter; value: uint32_t): TBrotliBool; cdecl;
+
+  BrotliDecoderDecompressStream: function(state: PBrotliDecoderState; available_in: psize_t; next_in: ppuint8_t;
+    available_out: psize_t; next_out: ppuint8_t; total_out: psize_t): TBrotliDecoderResult; cdecl;
+
   BrotliDecoderGetErrorCode: function(state: PBrotliDecoderState): Integer; cdecl;
   BrotliDecoderErrorString: function(code: Integer): PAnsiChar; cdecl;
-
-const
-  BROTLI_DECODER_RESULT_ERROR = 0;
-  BROTLI_DECODER_RESULT_SUCCESS = 1;
-  BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT = 2;
-  BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT = 3;
-
-  BROTLI_DECODER_PARAM_DISABLE_RING_BUFFER_REALLOCATION = 0;
-  BROTLI_DECODER_PARAM_LARGE_WINDOW = 1;
 
 type
   TLibState = record
@@ -122,10 +145,10 @@ end;
 
 function LoadLibBrotliEnc(const AEncDllName: string; const ARaiseException: Boolean): Boolean;
 
-  procedure GetProc(var AProcAddr: Pointer; const AProcName: string);
+  function GetProcAddr(const AProcName: string): Pointer;
   begin
-    AProcAddr := GetProcAddress(GHandleEnc, PChar(AProcName));
-    if not Assigned(AProcAddr) then begin
+    Result := GetProcAddress(GHandleEnc, PChar(AProcName));
+    if Result = nil then begin
       raise ELibBrotliError.Create('Cannot load function "' + AProcName + '" from ' + AEncDllName);
     end;
   end;
@@ -164,9 +187,8 @@ begin
         raise ELibBrotliError.Create('Cannot load ' + AEncDllName);
       end;
 
-      // Get encoder function pointers
-      GetProc(@BrotliEncoderCompress, 'BrotliEncoderCompress');
-      GetProc(@BrotliEncoderMaxCompressedSize, 'BrotliEncoderMaxCompressedSize');
+      BrotliEncoderCompress := GetProcAddr('BrotliEncoderCompress');
+      BrotliEncoderMaxCompressedSize := GetProcAddr('BrotliEncoderMaxCompressedSize');
 
       GStateEnc.Value := LIBBROTLI_STATE_LOADED;
       Result := True;
@@ -193,11 +215,12 @@ end;
 
 function LoadLibBrotliDec(const ADecDllName: string; const ARaiseException: Boolean): Boolean;
 
-  procedure GetProc(var AProcAddr: Pointer; const AProcName: string);
+  function GetProcAddr(const AProcName: string): Pointer;
   begin
-    AProcAddr := GetProcAddress(GHandleDec, PChar(AProcName));
-    if not Assigned(AProcAddr) then
+    Result := GetProcAddress(GHandleDec, PChar(AProcName));
+    if Result = nil then begin
       raise ELibBrotliError.Create('Cannot load function "' + AProcName + '" from ' + ADecDllName);
+    end;
   end;
 
 var
@@ -238,14 +261,12 @@ begin
         raise ELibBrotliError.Create('Cannot load ' + ADecDllName);
       end;
 
-      // Get decoder function pointers
-      GetProc(@BrotliDecoderCreateInstance, 'BrotliDecoderCreateInstance');
-      GetProc(@BrotliDecoderDestroyInstance, 'BrotliDecoderDestroyInstance');
-      GetProc(@BrotliDecoderSetParameter, 'BrotliDecoderSetParameter');
-      GetProc(@BrotliDecoderDecompressStream, 'BrotliDecoderDecompressStream');
-      GetProc(@BrotliDecoderIsFinished, 'BrotliDecoderIsFinished');
-      GetProc(@BrotliDecoderGetErrorCode, 'BrotliDecoderGetErrorCode');
-      GetProc(@BrotliDecoderErrorString, 'BrotliDecoderErrorString');
+      BrotliDecoderCreateInstance := GetProcAddr('BrotliDecoderCreateInstance');
+      BrotliDecoderDestroyInstance := GetProcAddr('BrotliDecoderDestroyInstance');
+      BrotliDecoderSetParameter := GetProcAddr('BrotliDecoderSetParameter');
+      BrotliDecoderDecompressStream := GetProcAddr('BrotliDecoderDecompressStream');
+      BrotliDecoderGetErrorCode := GetProcAddr('BrotliDecoderGetErrorCode');
+      BrotliDecoderErrorString := GetProcAddr('BrotliDecoderErrorString');
 
       GStateDec.Value := LIBBROTLI_STATE_LOADED;
       Result := True;
@@ -276,8 +297,8 @@ begin
   try
     GStateEnc.Value := LIBBROTLI_STATE_NONE;
 
-    @BrotliEncoderCompress := nil;
-    @BrotliEncoderMaxCompressedSize := nil;
+    BrotliEncoderCompress := nil;
+    BrotliEncoderMaxCompressedSize := nil;
 
     if GHandleEnc <> 0 then begin
       FreeLibrary(GHandleEnc);
@@ -294,13 +315,12 @@ begin
   try
     GStateDec.Value := LIBBROTLI_STATE_NONE;
 
-    @BrotliDecoderCreateInstance := nil;
-    @BrotliDecoderDestroyInstance := nil;
-    @BrotliDecoderSetParameter := nil;
-    @BrotliDecoderDecompressStream := nil;
-    @BrotliDecoderIsFinished := nil;
-    @BrotliDecoderGetErrorCode := nil;
-    @BrotliDecoderErrorString := nil;
+    BrotliDecoderCreateInstance := nil;
+    BrotliDecoderDestroyInstance := nil;
+    BrotliDecoderSetParameter := nil;
+    BrotliDecoderDecompressStream := nil;
+    BrotliDecoderGetErrorCode := nil;
+    BrotliDecoderErrorString := nil;
 
     if GHandleDec <> 0 then begin
       FreeLibrary(GHandleDec);
@@ -313,10 +333,10 @@ end;
 
 function CompressBrotli(const AData: RawByteString; AQuality, AWindowBits, AMode: Integer): RawByteString;
 var
-  VInputSize: NativeUInt;
-  VOutputSize: NativeUInt;
-  VMaxOutputSize: NativeUInt;
-  VSuccess: Integer;
+  VInputSize: size_t;
+  VOutputSize: size_t;
+  VMaxOutputSize: size_t;
+  VSuccess: TBrotliBool;
 begin
   Result := '';
 
@@ -325,12 +345,16 @@ begin
     Exit;
   end;
 
-  // Validate quality
-  if AQuality < BROTLI_MIN_QUALITY then begin
-    AQuality := BROTLI_MIN_QUALITY;
-  end else
-  if AQuality > BROTLI_MAX_QUALITY then begin
-    AQuality := BROTLI_MAX_QUALITY;
+  if not (AQuality in [BROTLI_MIN_QUALITY..BROTLI_MAX_QUALITY]) then begin
+    raise ELibBrotliError.CreateFmt(
+      'Quality value %d is out of range [%d..%d]!', [AQuality, BROTLI_MIN_QUALITY, BROTLI_MAX_QUALITY]
+    );
+  end;
+
+  if not (AWindowBits in [BROTLI_MIN_WINDOW_BITS..BROTLI_MAX_WINDOW_BITS]) then begin
+    raise ELibBrotliError.CreateFmt(
+      'WindowBits value %d is out of range [%d..%d]!', [AWindowBits, BROTLI_MIN_WINDOW_BITS, BROTLI_MAX_WINDOW_BITS]
+    );
   end;
 
   VMaxOutputSize := BrotliEncoderMaxCompressedSize(VInputSize);
@@ -341,15 +365,16 @@ begin
   SetLength(Result, VMaxOutputSize);
   VOutputSize := VMaxOutputSize;
 
-  VSuccess := BrotliEncoderCompress(AQuality, AWindowBits, AMode, VInputSize, PByte(AData),
-    @VOutputSize, PByte(Result));
+  VSuccess := BrotliEncoderCompress(AQuality, AWindowBits, AMode, VInputSize, Pointer(AData),
+    @VOutputSize, Pointer(Result));
 
-  if VSuccess = 0 then begin
-    Result := '';
+  if VSuccess = BROTLI_FALSE then begin
     raise ELibBrotliError.Create('Brotli compression failed!');
   end;
 
-  SetLength(Result, VOutputSize);
+  if VOutputSize <> VMaxOutputSize then begin
+    SetLength(Result, VOutputSize);
+  end;
 end;
 
 procedure DecompressBrotli(const AData: Pointer; const ASize: NativeUInt; const ADest: TStream);
@@ -358,15 +383,15 @@ const
 var
   VState: PBrotliDecoderState;
   VResult: TBrotliDecoderResult;
-  VAvailableIn: NativeUInt;
+  VAvailableIn: size_t;
   VNextIn: PByte;
-  VAvailableOut: NativeUInt;
+  VAvailableOut: size_t;
   VNextOut: PByte;
   VBuffer: array [0..BUFFER_SIZE-1] of Byte;
   VErrorCode: Integer;
-  VProduced: NativeUInt;
+  VProduced: size_t;
 begin
-  if (ASize = 0) or not Assigned(AData) then begin
+  if (AData = nil) or (ASize = 0) then begin
     Exit;
   end;
 
@@ -376,7 +401,7 @@ begin
   end;
 
   try
-    if BrotliDecoderSetParameter(VState, BROTLI_DECODER_PARAM_LARGE_WINDOW, 1) = 0 then begin
+    if BrotliDecoderSetParameter(VState, BROTLI_DECODER_PARAM_LARGE_WINDOW, 1) = BROTLI_FALSE then begin
       raise ELibBrotliError.Create('Failed to set Brotli decoder parameter!');
     end;
 
@@ -403,17 +428,10 @@ begin
         Break; // Decompression finished successfully
       end;
 
-    until (VResult = BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT) and (VAvailableIn = 0);
-
-    if BrotliDecoderIsFinished(VState) = 0 then begin
-      // Handle case where stream ends but brotli expects more data
-      if VResult <> BROTLI_DECODER_RESULT_SUCCESS then begin
-        VErrorCode := BrotliDecoderGetErrorCode(VState);
-        if VErrorCode <> 0 then begin
-          raise ELibBrotliError.CreateFmt('Brotli stream error: %s', [string(BrotliDecoderErrorString(VErrorCode))]);
-        end;
+      if (VResult = BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT) and (VAvailableIn = 0) then begin
+        raise ELibBrotliError.Create('Brotli stream truncated!');
       end;
-    end;
+    until False;
   finally
     BrotliDecoderDestroyInstance(VState);
   end;

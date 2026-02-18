@@ -58,7 +58,6 @@ var
   ZSTD_isError: function(code: size_t): Cardinal; cdecl;
   ZSTD_getErrorName: function(code: size_t): PAnsiChar; cdecl;
 
-  // Streaming decompression API
   ZSTD_createDStream: function: PZSTD_DStream; cdecl;
   ZSTD_freeDStream: function(zds: PZSTD_DStream): size_t; cdecl;
   ZSTD_initDStream: function(zds: PZSTD_DStream): size_t; cdecl;
@@ -105,10 +104,10 @@ end;
 
 function LoadLibZstd(const ADllName: string; const ARaiseException: Boolean): Boolean;
 
-  procedure GetProc(var AProcAddr: Pointer; const AProcName: string);
+  function GetProcAddr(const AProcName: string): Pointer;
   begin
-    AProcAddr := GetProcAddress(GHandle, PChar(AProcName));
-    if not Assigned(AProcAddr) then begin
+    Result := GetProcAddress(GHandle, PChar(AProcName));
+    if Result = nil then begin
       raise ELibZstdError.Create('Cannot load function "' + AProcName + '" from ' + ADllName);
     end;
   end;
@@ -148,16 +147,16 @@ begin
         raise ELibZstdError.Create('Cannot load ' + ADllName);
       end;
 
-      GetProc(@ZSTD_compress, 'ZSTD_compress');
-      GetProc(@ZSTD_decompress, 'ZSTD_decompress');
-      GetProc(@ZSTD_compressBound, 'ZSTD_compressBound');
-      GetProc(@ZSTD_getFrameContentSize, 'ZSTD_getFrameContentSize');
-      GetProc(@ZSTD_isError, 'ZSTD_isError');
-      GetProc(@ZSTD_getErrorName, 'ZSTD_getErrorName');
-      GetProc(@ZSTD_createDStream, 'ZSTD_createDStream');
-      GetProc(@ZSTD_freeDStream, 'ZSTD_freeDStream');
-      GetProc(@ZSTD_initDStream, 'ZSTD_initDStream');
-      GetProc(@ZSTD_decompressStream, 'ZSTD_decompressStream');
+      ZSTD_compress := GetProcAddr('ZSTD_compress');
+      ZSTD_decompress := GetProcAddr('ZSTD_decompress');
+      ZSTD_compressBound := GetProcAddr('ZSTD_compressBound');
+      ZSTD_getFrameContentSize := GetProcAddr('ZSTD_getFrameContentSize');
+      ZSTD_isError := GetProcAddr('ZSTD_isError');
+      ZSTD_getErrorName := GetProcAddr('ZSTD_getErrorName');
+      ZSTD_createDStream := GetProcAddr('ZSTD_createDStream');
+      ZSTD_freeDStream := GetProcAddr('ZSTD_freeDStream');
+      ZSTD_initDStream := GetProcAddr('ZSTD_initDStream');
+      ZSTD_decompressStream := GetProcAddr('ZSTD_decompressStream');
 
       GState.Value := LIBZSTD_STATE_LOADED;
       Result := True;
@@ -188,16 +187,16 @@ begin
   try
     GState.Value := LIBZSTD_STATE_NONE;
 
-    @ZSTD_compress := nil;
-    @ZSTD_decompress := nil;
-    @ZSTD_compressBound := nil;
-    @ZSTD_getFrameContentSize := nil;
-    @ZSTD_isError := nil;
-    @ZSTD_getErrorName := nil;
-    @ZSTD_createDStream := nil;
-    @ZSTD_freeDStream := nil;
-    @ZSTD_initDStream := nil;
-    @ZSTD_decompressStream := nil;
+    ZSTD_compress := nil;
+    ZSTD_decompress := nil;
+    ZSTD_compressBound := nil;
+    ZSTD_getFrameContentSize := nil;
+    ZSTD_isError := nil;
+    ZSTD_getErrorName := nil;
+    ZSTD_createDStream := nil;
+    ZSTD_freeDStream := nil;
+    ZSTD_initDStream := nil;
+    ZSTD_decompressStream := nil;
 
     if GHandle <> 0 then begin
       FreeLibrary(GHandle);
@@ -222,12 +221,10 @@ begin
     Exit;
   end;
 
-  // Validate compression level
-  if ACompressionLevel < ZSTD_FAST_MIN then begin
-    ACompressionLevel := ZSTD_FAST_MIN;
-  end else
-  if ACompressionLevel > ZSTD_MAX_CLEVEL then begin
-    ACompressionLevel := ZSTD_MAX_CLEVEL;
+  if (ACompressionLevel < ZSTD_FAST_MIN) or (ACompressionLevel > ZSTD_MAX_CLEVEL) then begin
+    raise ELibZstdError.CreateFmt(
+      'CompressionLevel value %d is out of range [%d..%d]!', [ACompressionLevel, ZSTD_FAST_MIN, ZSTD_MAX_CLEVEL]
+    );
   end;
 
   VMaxOutputSize := ZSTD_compressBound(VInputSize);
