@@ -377,7 +377,7 @@ type
     Label2: TLabel;
     DateTimePicker1: TDateTimePicker;
     DateTimePicker2: TDateTimePicker;
-    TBXVisibilityToggleItem3: TTBXVisibilityToggleItem;
+    tbxTimeIntervalShow: TTBXVisibilityToggleItem;
     DegreedLinesSubMenu: TTBXSubmenuItem;
     NDegScale10000: TTBXItem;
     NDegScale25000: TTBXItem;
@@ -906,6 +906,7 @@ type
     procedure tbxCopyUrlToGoogleEarthWebClick(Sender: TObject);
     procedure actOfflineMapOpenExecute(Sender: TObject);
     procedure tbitmGoToMapCenterClick(Sender: TObject);
+    procedure NPanelsPopup(Sender: TTBCustomItem; FromLink: Boolean);
   private
     FactlstProjections: TActionList;
     FactlstLanguages: TActionList;
@@ -3184,15 +3185,15 @@ procedure TfrmMain.OnFillingMapChange;
 var
   VConfig: IFillingMapLayerConfigStatic;
   VFillMode: TFillMode;
-var
   VZoom: Byte;
   VSelectedCell: TPoint;
-  VFilterMode: Boolean;
+  VIsFilterMode: Boolean;
 begin
   VConfig := FConfig.LayersConfig.FillingMapLayerConfig.GetStatic;
+
   VZoom := VConfig.Zoom;
   VFillMode := VConfig.FillMode;
-  VFilterMode := VConfig.FilterMode;
+  VIsFilterMode := VConfig.FilterMode;
 
   if VConfig.Visible then begin
     if VConfig.UseRelativeZoom then begin
@@ -3210,19 +3211,19 @@ begin
   end;
   tbtpltCachedTilesMap.SelectedCell := VSelectedCell;
 
-  if (VFillMode = fmUnexisting) then begin
-    actViewFillingMapMarkUnexisting.Checked := True;
-  end else if (VFillMode = fmExisting) then begin
-    actViewFillingMapMarkExisting.Checked := True;
-  end else if (VFillMode = fmGradient) then begin
-    actViewFillingMapMarkGradient.Checked := True;
+  case VFillMode of
+    fmUnexisting : actViewFillingMapMarkUnexisting.Checked := True;
+    fmExisting   : actViewFillingMapMarkExisting.Checked := True;
+    fmGradient   : actViewFillingMapMarkGradient.Checked := True;
+  else
+    Assert(False);
   end;
 
-  NShowFillDates.Checked := VFilterMode;
+  NShowFillDates.Checked := VIsFilterMode;
   DateTimePicker1.DateTime := VConfig.FillFirstDay;
   DateTimePicker2.DateTime := VConfig.FillLastDay;
 
-  FillDates.Visible := VFilterMode;
+  FillDates.Visible := VConfig.Visible and VIsFilterMode;
   actViewFillingMapMainMapUse.Checked := IsEqualGUID(VConfig.SelectedMap, CGUID_Zero);
 end;
 
@@ -6424,6 +6425,14 @@ begin
 
   // go to map center (main map)
   tbitmGoToMapCenter.Visible := (VMapType.Zmp.Coverage <> nil) and (not PointIsEmpty(VMapType.Zmp.Coverage.CenterPos));
+end;
+
+procedure TfrmMain.NPanelsPopup(Sender: TTBCustomItem; FromLink: Boolean);
+var
+  VConfig: IFillingMapLayerConfigStatic;
+begin
+  VConfig := FConfig.LayersConfig.FillingMapLayerConfig.GetStatic;
+  tbxTimeIntervalShow.Enabled := VConfig.Visible and VConfig.FilterMode;
 end;
 
 procedure TfrmMain.NParamsPopup(

@@ -307,6 +307,7 @@ object frmMain: TfrmMain
         object NPanels: TTBXSubmenuItem
           Caption = 'Toolbars'
           Images = MenusImageList
+          OnPopup = NPanelsPopup
           object NMainToolBarShow: TTBXVisibilityToggleItem
             Caption = 'Main'
             Control = TBMainToolBar
@@ -357,8 +358,8 @@ object frmMain: TfrmMain
             Control = tbElevationProfile
             Images = MenusImageList
           end
-          object TBXVisibilityToggleItem3: TTBXVisibilityToggleItem
-            Caption = 'Time Interval'
+          object tbxTimeIntervalShow: TTBXVisibilityToggleItem
+            Caption = 'Time Interval for Cached Tiles Map'
             Control = FillDates
             Images = MenusImageList
           end
@@ -889,7 +890,7 @@ object frmMain: TfrmMain
     object FillDates: TTBXToolbar
       Left = 643
       Top = 0
-      Caption = 'FillDates'
+      Caption = 'Time Interval for Cached Tiles Map'
       DefaultDock = TBDock
       DockPos = 643
       TabOrder = 2
