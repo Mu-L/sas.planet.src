@@ -19,3 +19,6 @@
 /SASPlanet.mes
 /SASPlanet.prjmgc
 /SASPlanet.res
+/Test/Alcinoe/*.res
+/Test/Alcinoe/Win32/*
+/Test/Alcinoe/Win64/*
