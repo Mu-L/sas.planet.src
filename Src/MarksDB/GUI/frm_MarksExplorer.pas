@@ -75,7 +75,6 @@ type
     grpMarks: TGroupBox;
     grpCategory: TGroupBox;
     chkSetAllMarksInCategoryVisible: TCheckBox;
-    imlStates: TImageList;
     pnlButtons: TPanel;
     pnlMainWithButtons: TPanel;
     pnlMain: TPanel;
