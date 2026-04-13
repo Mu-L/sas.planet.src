@@ -1051,6 +1051,7 @@
         <DCCReference Include="Src\MarksDB\GUI\u_MarksExplorerConfig.pas"/>
         <DCCReference Include="Src\MarksDB\GUI\u_MarksExplorerFilter.pas"/>
         <DCCReference Include="Src\MarksDB\GUI\u_MarksExplorerHelper.pas"/>
+        <DCCReference Include="Src\MarksDB\GUI\u_MarksExplorerView.pas"/>
         <DCCReference Include="Src\MarksDB\GUI\u_MarksGUIConfig.pas"/>
         <DCCReference Include="Src\MarksDB\SML\i_MarkCategoryDBSmlInternal.pas"/>
         <DCCReference Include="Src\MarksDB\SML\i_MarkCategoryFactoryDbInternal.pas"/>
@@ -1986,7 +1987,6 @@
         <DCCReference Include="Src\u_TreeChangeableBase.pas"/>
         <DCCReference Include="Src\u_UsedMarksConfig.pas"/>
         <DCCReference Include="Src\u_UsedMarksConfigStatic.pas"/>
-        <DCCReference Include="Src\MarksDB\GUI\u_MarksExplorerView.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
