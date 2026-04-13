@@ -1986,6 +1986,7 @@
         <DCCReference Include="Src\u_TreeChangeableBase.pas"/>
         <DCCReference Include="Src\u_UsedMarksConfig.pas"/>
         <DCCReference Include="Src\u_UsedMarksConfigStatic.pas"/>
+        <DCCReference Include="Src\MarksDB\GUI\u_MarksExplorerView.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -131,7 +131,7 @@ object frmMarksExplorer: TfrmMarksExplorer
           Align = alBottom
           BevelOuter = bvNone
           TabOrder = 2
-          object CheckBox1: TCheckBox
+          object chkSetAllMarksInCategoryVisible: TCheckBox
             AlignWithMargins = True
             Left = 3
             Top = 3
@@ -140,7 +140,7 @@ object frmMarksExplorer: TfrmMarksExplorer
             Align = alLeft
             Caption = 'All'
             TabOrder = 1
-            OnClick = CheckBox1Click
+            OnClick = chkSetAllMarksInCategoryVisibleClick
           end
           object lblMarksCount: TStaticText
             Left = 422
@@ -151,27 +151,15 @@ object frmMarksExplorer: TfrmMarksExplorer
             TabOrder = 0
           end
         end
-        object MarksListBox: TTreeView
+        object pnlMarksList: TPanel
           AlignWithMargins = True
           Left = 5
           Top = 46
           Width = 420
           Height = 314
           Align = alClient
-          DragMode = dmAutomatic
-          HideSelection = False
-          Indent = 19
-          MultiSelect = True
-          MultiSelectStyle = [msControlSelect, msShiftSelect]
-          PopupMenu = tbpmnMarks
-          ReadOnly = True
-          ShowRoot = False
-          StateImages = imlStates
+          BevelOuter = bvNone
           TabOrder = 1
-          OnContextPopup = MarksListBoxContextPopup
-          OnDblClick = MarksListBoxDblClick
-          OnKeyDown = MarksListBoxKeyDown
-          OnMouseUp = MarksListBoxMouseUp
         end
       end
       object grpCategory: TGroupBox
@@ -186,26 +174,15 @@ object frmMarksExplorer: TfrmMarksExplorer
         Align = alLeft
         Caption = 'Placemark Categories'
         TabOrder = 0
-        object CategoryTreeView: TTreeView
+        object pnlCategoriesTree: TPanel
           AlignWithMargins = True
           Left = 5
           Top = 46
           Width = 168
           Height = 314
           Align = alClient
-          DragMode = dmAutomatic
-          HideSelection = False
-          Indent = 19
-          PopupMenu = tbpmnCategories
-          ReadOnly = True
-          StateImages = imlStates
+          BevelOuter = bvNone
           TabOrder = 1
-          OnChange = CategoryTreeViewChange
-          OnContextPopup = CategoryTreeViewContextPopup
-          OnDragDrop = CategoryTreeViewDragDrop
-          OnDragOver = CategoryTreeViewDragOver
-          OnKeyUp = CategoryTreeViewKeyUp
-          OnMouseUp = CategoryTreeViewMouseUp
         end
         object TBXDockCategory: TTBXDock
           Left = 2
@@ -224,22 +201,22 @@ object frmMarksExplorer: TfrmMarksExplorer
             Images = frmMain.MenusImageList
             Stretch = True
             TabOrder = 0
-            object BtnAddCategory: TTBXItem
+            object btnAddCategory: TTBXItem
               Hint = 'Add new category'
               ImageIndex = 32
-              OnClick = BtnAddCategoryClick
+              OnClick = btnAddCategoryClick
             end
-            object BtnEditCategory: TTBXItem
+            object btnEditCategory: TTBXItem
               Hint = 'Edit selected category'
               ImageIndex = 31
               ShortCut = 113
-              OnClick = BtnEditCategoryClick
+              OnClick = btnEditCategoryClick
             end
-            object BtnDelKat: TTBXItem
+            object btnDeleteCategory: TTBXItem
               Hint = 'Delete selected category'
               ImageIndex = 30
               ShortCut = 46
-              OnClick = BtnDelKatClick
+              OnClick = btnDeleteCategoryClick
             end
             object TBXSeparatorItem3: TTBXSeparatorItem
             end
@@ -258,7 +235,7 @@ object frmMarksExplorer: TfrmMarksExplorer
           Align = alBottom
           BevelOuter = bvNone
           TabOrder = 2
-          object CheckBox2: TCheckBox
+          object chkSetAllCategoriesVisible: TCheckBox
             AlignWithMargins = True
             Left = 3
             Top = 3
@@ -267,7 +244,7 @@ object frmMarksExplorer: TfrmMarksExplorer
             Align = alLeft
             Caption = 'All'
             TabOrder = 0
-            OnClick = CheckBox2Click
+            OnClick = chkSetAllCategoriesVisibleClick
           end
           object chkCascade: TCheckBox
             AlignWithMargins = True
@@ -280,6 +257,7 @@ object frmMarksExplorer: TfrmMarksExplorer
             Checked = True
             State = cbChecked
             TabOrder = 1
+            OnClick = chkCascadeClick
           end
         end
       end
@@ -345,12 +323,11 @@ object frmMarksExplorer: TfrmMarksExplorer
         Width = 112
         Height = 21
         Align = alTop
+        Caption = 'Export'
         DropDownCombo = True
         DropDownMenu = PopupExport
-        ImageIndex = 0
         TabOrder = 0
         OnClick = btnExportClick
-        Caption = 'Export'
       end
       object btnImport: TTBXButton
         AlignWithMargins = True
@@ -359,10 +336,9 @@ object frmMarksExplorer: TfrmMarksExplorer
         Width = 112
         Height = 21
         Align = alTop
-        ImageIndex = 0
+        Caption = 'Import'
         TabOrder = 1
         OnClick = btnImportClick
-        Caption = 'Import'
       end
     end
   end
@@ -530,32 +506,32 @@ object frmMarksExplorer: TfrmMarksExplorer
     Left = 72
     Top = 200
     object tbitmAddCategory: TTBXItem
-      ImageIndex = 32
-      OnClick = tbitmAddCategoryClick
       Caption = 'Add SubCategory'
       Hint = 'Add'
+      ImageIndex = 32
+      OnClick = tbitmAddCategoryClick
     end
     object tbitmEditCategory: TTBXItem
-      ImageIndex = 31
-      ShortCut = 113
-      OnClick = BtnEditCategoryClick
       Caption = 'Edit Category'
       Hint = 'Edit'
+      ImageIndex = 31
+      ShortCut = 113
+      OnClick = btnEditCategoryClick
     end
     object tbitmDeleteCategory: TTBXItem
-      ImageIndex = 30
-      ShortCut = 46
-      OnClick = BtnDelKatClick
       Caption = 'Delete Category'
       Hint = 'Delete'
+      ImageIndex = 30
+      ShortCut = 46
+      OnClick = btnDeleteCategoryClick
     end
     object tbsprtCategoriesPopUp: TTBXSeparatorItem
     end
     object tbitmExportCategory: TTBXItem
-      ImageIndex = 25
-      OnClick = btnExportCategoryClick
       Caption = 'Export Placemarks'
       Hint = 'Export placemarks from selected category'
+      ImageIndex = 25
+      OnClick = btnExportCategoryClick
     end
     object tbxtmCatAddToMergePolygons: TTBXItem
       Caption = 'Add to Merge Polygons'

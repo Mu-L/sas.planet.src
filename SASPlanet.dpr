@@ -793,6 +793,7 @@ uses
   u_MarksExplorerConfig in 'Src\MarksDB\GUI\u_MarksExplorerConfig.pas',
   u_MarksExplorerFilter in 'Src\MarksDB\GUI\u_MarksExplorerFilter.pas',
   u_MarksExplorerHelper in 'Src\MarksDB\GUI\u_MarksExplorerHelper.pas',
+  u_MarksExplorerView in 'Src\MarksDB\GUI\u_MarksExplorerView.pas',
   u_MarksGUIConfig in 'Src\MarksDB\GUI\u_MarksGUIConfig.pas',
   i_MarkCategoryDBSmlInternal in 'Src\MarksDB\SML\i_MarkCategoryDBSmlInternal.pas',
   i_MarkCategoryFactoryDbInternal in 'Src\MarksDB\SML\i_MarkCategoryFactoryDbInternal.pas',
