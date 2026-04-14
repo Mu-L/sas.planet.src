@@ -359,13 +359,12 @@ begin
       tbpmnCategories,
       pnlMarksList,
       tbpmnMarks,
-      FMapGoto,
       FMarkDBGUI,
       FMarksExplorerFilter
     );
 
   FMarksExplorerView.OnMarksViewChange := Self.OnMarksViewChanged;
-  FMarksExplorerView.OnCategoritesViewChange := nil;
+  FMarksExplorerView.OnMarksViewDblClick := Self.btnGoToMarkClick;
 end;
 
 procedure TfrmMarksExplorer.CreateParams(var Params: TCreateParams);
