@@ -946,7 +946,7 @@ begin
   SetLength(AExpanded, VLen);
 
   ASelected.UID := 0;
-  ASelected.Index := -1;
+  ASelected.Category := nil;
 
   VNodeIndex := 0;
   VNode := FCategoryTree.GetFirst;
@@ -964,7 +964,8 @@ begin
         end;
 
         AExpanded[I].Index := VNodeIndex;
-        AExpanded[I].UID := GetNodeUniqueID(VNodeData.Category.MarkCategory);
+        AExpanded[I].Category := VNodeData.Category.MarkCategory;
+        AExpanded[I].UID := GetNodeUniqueID(AExpanded[I].Category);
 
         if AExpanded[I].UID <> 0 then begin
           Inc(I);
@@ -979,7 +980,8 @@ begin
       end;
       if (VNodeData <> nil) and (VNodeData.Category <> nil) then begin
         ASelected.Index := VNodeIndex;
-        ASelected.UID := GetNodeUniqueID(VNodeData.Category.MarkCategory);
+        ASelected.Category := VNodeData.Category.MarkCategory;
+        ASelected.UID := GetNodeUniqueID(ASelected.Category);
       end;
     end;
 
@@ -992,54 +994,90 @@ end;
 
 procedure TMarksExplorerView.RestoreCategoriesState(const AExpanded: TCategoryInfoArray; const ASelected: TCategoryInfo);
 var
+  I: Integer;
   VNode: PVirtualNode;
   VNodeData: PCategoryNodeData;
   VNodeIndex: Integer;
   VExpandedLen: Integer;
-  VExpandedIndex: Integer;
+  VExpandedFoundCount: Integer;
+  VExpandedMatched: array of Boolean;
   VSelectedFound: Boolean;
+  VMatched: Boolean;
+  VNodeUID: Cardinal;
 begin
   VExpandedLen := Length(AExpanded);
-  VExpandedIndex := 0;
-
   VSelectedFound := (ASelected.UID = 0);
 
-  if (VExpandedLen = 0) and (VSelectedFound) then begin
+  if (VExpandedLen = 0) and VSelectedFound then begin
     Exit;
   end;
+
+  SetLength(VExpandedMatched, VExpandedLen);
+  VExpandedFoundCount := 0;
 
   VNodeIndex := 0;
   VNode := FCategoryTree.GetFirst;
 
   while VNode <> nil do begin
-    VNodeData := nil;
+    VNodeData := FCategoryTree.GetNodeData(VNode);
+    if (VNodeData <> nil) and (VNodeData.Category <> nil) then begin
 
-    // Expanded (search algorithm requires the AExpanded array to be pre-sorted by the Index field)
-    if (VExpandedIndex < VExpandedLen) and (VNodeIndex = AExpanded[VExpandedIndex].Index) then begin
-      VNodeData := FCategoryTree.GetNodeData(VNode);
-      if (VNodeData <> nil) and (VNodeData.Category <> nil) then begin
-        if AExpanded[VExpandedIndex].UID = GetNodeUniqueID(VNodeData.Category.MarkCategory) then begin
-          FCategoryTree.Expanded[VNode] := True;
+      VNodeUID := 0;
+
+      // Expanded
+      if (VNode.ChildCount > 0) and (VExpandedFoundCount < VExpandedLen) then begin
+
+        VNodeUID := GetNodeUniqueID(VNodeData.Category.MarkCategory);
+
+        for I := 0 to VExpandedLen - 1 do begin
+
+          if VExpandedMatched[I] then begin
+            Continue;
+          end;
+
+          VMatched :=
+            (AExpanded[I].Index = VNodeIndex) and
+            (AExpanded[I].UID = VNodeUID);
+
+          if not VMatched then begin
+            VMatched :=
+              (AExpanded[I].Category <> nil) and
+               AExpanded[I].Category.IsSame(VNodeData.Category.MarkCategory);
+          end;
+
+          if VMatched then begin
+            FCategoryTree.Expanded[VNode] := True;
+            VExpandedMatched[I] := True;
+            Inc(VExpandedFoundCount);
+            Break;
+          end;
         end;
       end;
-      Inc(VExpandedIndex);
-    end;
 
-    // Selected
-    if (not VSelectedFound) and (VNodeIndex = ASelected.Index) then begin
-      if VNodeData = nil then begin
-        VNodeData := FCategoryTree.GetNodeData(VNode);
-      end;
-      if (VNodeData <> nil) and (VNodeData.Category <> nil) then begin
-        if ASelected.UID = GetNodeUniqueID(VNodeData.Category.MarkCategory) then begin
+      // Selected
+      if not VSelectedFound then begin
+        if VNodeUID = 0 then begin
+          VNodeUID := GetNodeUniqueID(VNodeData.Category.MarkCategory);
+        end;
+
+        VSelectedFound :=
+          (ASelected.Index = VNodeIndex) and
+          (ASelected.UID = VNodeUID);
+
+        if not VSelectedFound then begin
+          VSelectedFound :=
+            (ASelected.Category <> nil) and
+             ASelected.Category.IsSame(VNodeData.Category.MarkCategory);
+        end;
+
+        if VSelectedFound then begin
           FCategoryTree.ClearSelection;
           FCategoryTree.Selected[VNode] := True;
         end;
       end;
-      VSelectedFound := True;
     end;
 
-    if VSelectedFound and (VExpandedIndex >= VExpandedLen) then begin
+    if VSelectedFound and (VExpandedFoundCount >= VExpandedLen) then begin
       Break;
     end;
 

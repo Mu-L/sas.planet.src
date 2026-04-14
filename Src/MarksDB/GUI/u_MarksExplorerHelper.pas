@@ -35,6 +35,7 @@ type
   TCategoryInfo = record
     UID: Cardinal;
     Index: Integer;
+    Category: ICategory;
   end;
   TCategoryInfoArray = array of TCategoryInfo;
 
@@ -105,6 +106,7 @@ begin
     Result.UID := 0;
     Result.Index := -1;
   end;
+  Result.Category := nil;
 end;
 
 function CategoryInfoArrayFromString(const AStr: string): TCategoryInfoArray;
@@ -125,6 +127,7 @@ begin
         if TryStrToUInt('$' + VStrings.Names[I], Result[VCount].UID) and
            TryStrToInt(VStrings.ValueFromIndex[I], Result[VCount].Index)
         then begin
+          Result[VCount].Category := nil;
           Inc(VCount);
         end;
       end;
