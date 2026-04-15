@@ -45,7 +45,6 @@ type
     imgLogo: TImage32;
     lblVersion: TLabel;
     lblWebSite: TLabel;
-    pnlBottom: TPanel;
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure tmrLogoTimer(Sender: TObject);
