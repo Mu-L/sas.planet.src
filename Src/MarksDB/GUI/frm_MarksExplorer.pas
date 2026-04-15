@@ -153,12 +153,15 @@ type
     tbxtmCopyBboxToClipboard: TTBXItem;
     pnlCategoriesTree: TPanel;
     pnlMarksList: TPanel;
-    procedure FormKeyPress(Sender: TObject; var Key: Char);
-    procedure FormMove(Var Msg: TWMMove); Message WM_MOVE;
-    procedure FormResize(Sender: TObject);
-    procedure FormShow(Sender: TObject);
-    procedure FormHide(Sender: TObject);
+
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure FormHide(Sender: TObject);
+    procedure FormMove(var Msg: TWMMove); message WM_MOVE;
+    procedure FormResize(Sender: TObject);
+    procedure FormKeyPress(Sender: TObject; var Key: Char);
+
     procedure btnAddCategoryClick(Sender: TObject);
     procedure btnDeleteCategoryClick(Sender: TObject);
     procedure btnEditCategoryClick(Sender: TObject);
@@ -167,7 +170,6 @@ type
     procedure btnExportClick(Sender: TObject);
     procedure btnExportCategoryClick(Sender: TObject);
     procedure btnImportClick(Sender: TObject);
-    procedure FormActivate(Sender: TObject);
     procedure btnEditMarkClick(Sender: TObject);
     procedure btnDelMarkClick(Sender: TObject);
     procedure btnGoToMarkClick(Sender: TObject);
@@ -252,7 +254,6 @@ type
     procedure OnConfigChange;
     procedure OnMarkSystemStateChanged;
     procedure OnMarksExplorerFilterChanged;
-
     procedure OnMarksViewChanged(Sender: TObject);
 
     procedure WMGetMinMaxInfo(var Msg: TWMGetMinMaxInfo); message WM_GETMINMAXINFO;
@@ -366,6 +367,25 @@ begin
   FMarksExplorerView.OnMarksViewDblClick := Self.btnGoToMarkClick;
 end;
 
+destructor TfrmMarksExplorer.Destroy;
+begin
+  if Assigned(FWindowConfig) and Assigned(FConfigListener) then begin
+    FWindowConfig.ChangeNotifier.Remove(FConfigListener);
+    FConfigListener := nil;
+  end;
+  if Assigned(FMarksExplorerFilter) and Assigned(FMarksExplorerFilterListener) then begin
+    FMarksExplorerFilter.ChangeNotifier.Remove(FMarksExplorerFilterListener);
+    FMarksExplorerFilterListener := nil;
+  end;
+
+  FreeAndNil(FMarksExplorerView);
+
+  FreeAndNil(FfrmMarkSystemConfigEdit);
+  FreeAndNil(FfrmMarksExplorerFilter);
+
+  inherited;
+end;
+
 procedure TfrmMarksExplorer.CreateParams(var Params: TCreateParams);
 begin
   inherited;
@@ -389,23 +409,102 @@ begin
   FExpandedCategoriesInfo := CategoryInfoArrayFromString(FMarksExplorerConfig.ExpandedCategories);
 end;
 
-destructor TfrmMarksExplorer.Destroy;
+procedure TfrmMarksExplorer.FormShow(Sender: TObject);
+var
+  VWidth: Integer;
 begin
-  if Assigned(FWindowConfig) and Assigned(FConfigListener) then begin
-    FWindowConfig.ChangeNotifier.Remove(FConfigListener);
-    FConfigListener := nil;
+  FMarksExplorerView.UpdateCategoryTree;
+  FMarksExplorerView.CascadeChange := chkCascade.Checked;
+  FMarksExplorerView.RestoreCategoriesState(FExpandedCategoriesInfo, FSelectedCategoryInfo);
+  FMarksExplorerView.ScrollInfo := FMarksExplorerViewScrollInfo;
+
+  btnNavOnMark.Checked := FNavToPoint.IsActive;
+
+  FMarkSystemConfig.ChangeNotifier.Add(FMarkSystemConfigListener);
+  FMarkDBGUI.MarksDb.CategoryDB.ChangeNotifier.Add(FCategoryDBListener);
+  FMarkDBGUI.MarksDb.MarkDb.ChangeNotifier.Add(FMarksDBListener);
+  FMarksShowConfig.ChangeNotifier.Add(FMarksShowConfigListener);
+  FMarkDBGUI.MarksDb.State.ChangeNotifier.Add(FMarksSystemStateListener);
+  FWindowConfig.ChangeNotifier.Add(FConfigListener);
+
+  OnConfigChange;
+  OnMarkSystemStateChanged;
+  OnMarkSystemConfigChange;
+
+  Self.OnResize := FormResize;
+
+  VWidth := FMarksExplorerConfig.CategoriesWidth;
+  if VWidth > 0 then begin
+    grpCategory.Width := VWidth;
   end;
-  if Assigned(FMarksExplorerFilter) and Assigned(FMarksExplorerFilterListener) then begin
-    FMarksExplorerFilter.ChangeNotifier.Remove(FMarksExplorerFilterListener);
-    FMarksExplorerFilterListener := nil;
+end;
+
+procedure TfrmMarksExplorer.FormActivate(Sender: TObject);
+begin
+  OnMarksShowConfigChanged;
+end;
+
+procedure TfrmMarksExplorer.FormHide(Sender: TObject);
+begin
+  Self.OnResize := nil;
+  FMarksExplorerConfig.CategoriesWidth := grpCategory.Width;
+
+  FMarkSystemConfig.ChangeNotifier.Remove(FMarkSystemConfigListener);
+  FWindowConfig.ChangeNotifier.Remove(FConfigListener);
+  FMarkDBGUI.MarksDb.CategoryDB.ChangeNotifier.Remove(FCategoryDBListener);
+  FMarkDBGUI.MarksDb.MarkDb.ChangeNotifier.Remove(FMarksDBListener);
+  FMarksShowConfig.ChangeNotifier.Remove(FMarksShowConfigListener);
+  FMarkDBGUI.MarksDb.State.ChangeNotifier.Remove(FMarksSystemStateListener);
+
+  FMarksExplorerViewScrollInfo := FMarksExplorerView.ScrollInfo;
+  FMarksExplorerView.GetCategoriesState(FExpandedCategoriesInfo, FSelectedCategoryInfo);
+  FMarksExplorerConfig.SelectedCategory := CategoryInfoToString(FSelectedCategoryInfo);
+  FMarksExplorerConfig.ExpandedCategories := CategoryInfoArrayToString(FExpandedCategoriesInfo);
+  FMarksExplorerView.Reset;
+
+  FCopyPasteBuffer := nil;
+  if Assigned(FfrmMarksExplorerFilter) then begin
+    FfrmMarksExplorerFilter.Close;
   end;
+end;
 
-  FreeAndNil(FMarksExplorerView);
-
-  FreeAndNil(FfrmMarkSystemConfigEdit);
-  FreeAndNil(FfrmMarksExplorerFilter);
-
+procedure TfrmMarksExplorer.FormMove(var Msg: TWMMove);
+begin
   inherited;
+  if Assigned(Self.OnResize) then begin
+    Self.OnResize(Self);
+  end;
+end;
+
+procedure TfrmMarksExplorer.FormResize(Sender: TObject);
+begin
+  if Self.WindowState = wsNormal then begin
+    FWindowConfig.SetWindowPosition(BoundsRect);
+  end;
+end;
+
+procedure TfrmMarksExplorer.FormKeyPress(Sender: TObject; var Key: Char);
+begin
+  if Key = #27 { VK_ESCAPE } then begin
+    Close;
+  end;
+end;
+
+procedure TfrmMarksExplorer.WMGetMinMaxInfo(var Msg: TWMGetMinMaxInfo);
+begin
+  inherited;
+  Msg.MinMaxInfo.ptMinTrackSize.X := 406;
+  Msg.MinMaxInfo.ptMinTrackSize.Y := 309;
+end;
+
+procedure TfrmMarksExplorer.ToggleVisible;
+begin
+  if (not Self.Visible) or (Self.WindowState = wsMinimized) then begin
+    Self.Visible := True;
+    Self.WindowState := wsNormal;
+  end else begin
+    Self.Visible := False;
+  end;
 end;
 
 procedure TfrmMarksExplorer.btnAddCategoryClick(Sender: TObject);
@@ -656,74 +755,6 @@ begin
   end;
 end;
 
-procedure TfrmMarksExplorer.OnMarksViewChanged(Sender: TObject);
-var
-  VCount: PMarksExplorerViewCount;
-begin
-  VCount := FMarksExplorerView.GetMarksCount;
-  if VCount.Total < 0 then begin
-    lblMarksCount.Caption := '';
-  end else
-  if VCount.Total > 0 then begin
-    lblMarksCount.Caption := Format('(%d/%d)', [VCount.Visible, VCount.Total]);
-  end else begin
-    lblMarksCount.Caption := '(0/0)';
-  end;
-end;
-
-procedure TfrmMarksExplorer.OnCategoryDbChanged;
-begin
-  FMarksExplorerView.UpdateCategoryTree;
-end;
-
-procedure TfrmMarksExplorer.OnConfigChange;
-var
-  VRect: TRect;
-begin
-  VRect := FWindowConfig.BoundsRect;
-  if EqualRect(BoundsRect, VRect) then begin
-    Exit;
-  end;
-  UpdateRectByMonitors(VRect);
-  if EqualRect(BoundsRect, VRect) then begin
-    Exit;
-  end;
-  BoundsRect := VRect;
-end;
-
-procedure TfrmMarksExplorer.OnMarksDbChanged;
-begin
-  FMarksExplorerView.UpdateMarksList;
-end;
-
-procedure TfrmMarksExplorer.OnMarksExplorerFilterChanged;
-begin
-  tbitmFilter.Checked := FMarksExplorerFilter.Enabled;
-  FMarksExplorerView.UpdateMarksList;
-end;
-
-procedure TfrmMarksExplorer.OnMarksShowConfigChanged;
-var
-  VMarksConfig: IUsedMarksConfigStatic;
-begin
-  VMarksConfig := FMarksShowConfig.GetStatic;
-  if VMarksConfig.IsUseMarks then begin
-    if VMarksConfig.IgnoreCategoriesVisible and VMarksConfig.IgnoreMarksVisible then begin
-      rgMarksShowMode.ItemIndex := 1;
-    end else begin
-      rgMarksShowMode.ItemIndex := 0;
-    end;
-  end else begin
-    rgMarksShowMode.ItemIndex := 2;
-  end;
-end;
-
-procedure TfrmMarksExplorer.OnMarkSystemStateChanged;
-begin
-  ResetCopyPasteBuffer;
-  lblReadOnly.Visible := not FMarkDBGUI.MarksDb.State.GetStatic.WriteAccess;
-end;
-
 procedure TfrmMarksExplorer.tbitmAddCategoryClick(Sender: TObject);
 var
   VCategory: IMarkCategory;
@@ -791,19 +822,6 @@ begin
   FMarksExplorerView.CascadeChange := chkCascade.Checked;
 end;
 
-procedure TfrmMarksExplorer.FormActivate(Sender: TObject);
-begin
-  OnMarksShowConfigChanged;
-end;
-
-procedure TfrmMarksExplorer.FormMove(var Msg: TWMMove);
-begin
-  inherited;
-  if Assigned(Self.OnResize) then begin
-    Self.OnResize(Self);
-  end;
-end;
-
 procedure TfrmMarksExplorer.chkSetAllMarksInCategoryVisibleClick(Sender: TObject);
 var
   VNewVisible: Boolean;
@@ -813,81 +831,6 @@ begin
   if VCategory <> nil then begin
     VNewVisible := chkSetAllMarksInCategoryVisible.Checked;
     FMarkDBGUI.MarksDb.MarkDb.SetAllMarksInCategoryVisible(VCategory, VNewVisible);
-  end;
-end;
-
-procedure TfrmMarksExplorer.FormHide(Sender: TObject);
-begin
-  Self.OnResize := nil;
-  FMarksExplorerConfig.CategoriesWidth := grpCategory.Width;
-
-  FMarkSystemConfig.ChangeNotifier.Remove(FMarkSystemConfigListener);
-  FWindowConfig.ChangeNotifier.Remove(FConfigListener);
-  FMarkDBGUI.MarksDb.CategoryDB.ChangeNotifier.Remove(FCategoryDBListener);
-  FMarkDBGUI.MarksDb.MarkDb.ChangeNotifier.Remove(FMarksDBListener);
-  FMarksShowConfig.ChangeNotifier.Remove(FMarksShowConfigListener);
-  FMarkDBGUI.MarksDb.State.ChangeNotifier.Remove(FMarksSystemStateListener);
-
-  FMarksExplorerViewScrollInfo := FMarksExplorerView.ScrollInfo;
-  FMarksExplorerView.GetCategoriesState(FExpandedCategoriesInfo, FSelectedCategoryInfo);
-  FMarksExplorerConfig.SelectedCategory := CategoryInfoToString(FSelectedCategoryInfo);
-  FMarksExplorerConfig.ExpandedCategories := CategoryInfoArrayToString(FExpandedCategoriesInfo);
-  FMarksExplorerView.Reset;
-
-  FCopyPasteBuffer := nil;
-  if Assigned(FfrmMarksExplorerFilter) then begin
-    FfrmMarksExplorerFilter.Close;
-  end;
-end;
-
-procedure TfrmMarksExplorer.FormKeyPress(Sender: TObject; var Key: Char);
-begin
-  if Key = #27 { VK_ESCAPE } then begin
-    Close;
-  end;
-end;
-
-procedure TfrmMarksExplorer.FormResize(Sender: TObject);
-begin
-  if Self.WindowState = wsNormal then begin
-    FWindowConfig.SetWindowPosition(BoundsRect);
-  end;
-end;
-
-procedure TfrmMarksExplorer.WMGetMinMaxInfo(var Msg: TWMGetMinMaxInfo);
-begin
-  inherited;
-  Msg.MinMaxInfo.ptMinTrackSize.X := 406;
-  Msg.MinMaxInfo.ptMinTrackSize.Y := 309;
-end;
-
-procedure TfrmMarksExplorer.FormShow(Sender: TObject);
-var
-  VWidth: Integer;
-begin
-  FMarksExplorerView.UpdateCategoryTree;
-  FMarksExplorerView.CascadeChange := chkCascade.Checked;
-  FMarksExplorerView.RestoreCategoriesState(FExpandedCategoriesInfo, FSelectedCategoryInfo);
-  FMarksExplorerView.ScrollInfo := FMarksExplorerViewScrollInfo;
-
-  btnNavOnMark.Checked := FNavToPoint.IsActive;
-
-  FMarkSystemConfig.ChangeNotifier.Add(FMarkSystemConfigListener);
-  FMarkDBGUI.MarksDb.CategoryDB.ChangeNotifier.Add(FCategoryDBListener);
-  FMarkDBGUI.MarksDb.MarkDb.ChangeNotifier.Add(FMarksDBListener);
-  FMarksShowConfig.ChangeNotifier.Add(FMarksShowConfigListener);
-  FMarkDBGUI.MarksDb.State.ChangeNotifier.Add(FMarksSystemStateListener);
-  FWindowConfig.ChangeNotifier.Add(FConfigListener);
-
-  OnConfigChange;
-  OnMarkSystemStateChanged;
-  OnMarkSystemConfigChange;
-
-  Self.OnResize := FormResize;
-
-  VWidth := FMarksExplorerConfig.CategoriesWidth;
-  if VWidth > 0 then begin
-    grpCategory.Width := VWidth;
   end;
 end;
 
@@ -1072,16 +1015,6 @@ begin
   end;
 end;
 
-procedure TfrmMarksExplorer.ToggleVisible;
-begin
-  if (not Self.Visible) or (Self.WindowState = wsMinimized) then begin
-    Self.Visible := True;
-    Self.WindowState := wsNormal;
-  end else begin
-    Self.Visible := False;
-  end;
-end;
-
 procedure TfrmMarksExplorer.tbxConfigListItemClick(Sender: TObject);
 var
   VMenuItem: TTBXItem;
@@ -1191,6 +1124,74 @@ end;
 procedure TfrmMarksExplorer.tbxAddClick(Sender: TObject);
 begin
   FfrmMarkSystemConfigEdit.AddNewDatabaseConfig;
+end;
+
+procedure TfrmMarksExplorer.OnMarksViewChanged(Sender: TObject);
+var
+  VCount: PMarksExplorerViewCount;
+begin
+  VCount := FMarksExplorerView.GetMarksCount;
+  if VCount.Total < 0 then begin
+    lblMarksCount.Caption := '';
+  end else
+  if VCount.Total > 0 then begin
+    lblMarksCount.Caption := Format('(%d/%d)', [VCount.Visible, VCount.Total]);
+  end else begin
+    lblMarksCount.Caption := '(0/0)';
+  end;
+end;
+
+procedure TfrmMarksExplorer.OnCategoryDbChanged;
+begin
+  FMarksExplorerView.UpdateCategoryTree;
+end;
+
+procedure TfrmMarksExplorer.OnConfigChange;
+var
+  VRect: TRect;
+begin
+  VRect := FWindowConfig.BoundsRect;
+  if EqualRect(BoundsRect, VRect) then begin
+    Exit;
+  end;
+  UpdateRectByMonitors(VRect);
+  if EqualRect(BoundsRect, VRect) then begin
+    Exit;
+  end;
+  BoundsRect := VRect;
+end;
+
+procedure TfrmMarksExplorer.OnMarksDbChanged;
+begin
+  FMarksExplorerView.UpdateMarksList;
+end;
+
+procedure TfrmMarksExplorer.OnMarksExplorerFilterChanged;
+begin
+  tbitmFilter.Checked := FMarksExplorerFilter.Enabled;
+  FMarksExplorerView.UpdateMarksList;
+end;
+
+procedure TfrmMarksExplorer.OnMarksShowConfigChanged;
+var
+  VMarksConfig: IUsedMarksConfigStatic;
+begin
+  VMarksConfig := FMarksShowConfig.GetStatic;
+  if VMarksConfig.IsUseMarks then begin
+    if VMarksConfig.IgnoreCategoriesVisible and VMarksConfig.IgnoreMarksVisible then begin
+      rgMarksShowMode.ItemIndex := 1;
+    end else begin
+      rgMarksShowMode.ItemIndex := 0;
+    end;
+  end else begin
+    rgMarksShowMode.ItemIndex := 2;
+  end;
+end;
+
+procedure TfrmMarksExplorer.OnMarkSystemStateChanged;
+begin
+  ResetCopyPasteBuffer;
+  lblReadOnly.Visible := not FMarkDBGUI.MarksDb.State.GetStatic.WriteAccess;
 end;
 
 procedure TfrmMarksExplorer.OnMarkSystemConfigChange;
