@@ -102,6 +102,7 @@ type
     procedure CategoryTreeContextPopup(Sender: TObject; MousePos: TPoint; var Handled: Boolean);
     procedure CategoryTreeDragOver(Sender: TBaseVirtualTree; Source: TObject; Shift: TShiftState; State: TDragState; Pt: TPoint; Mode: TDropMode; var Effect: Integer; var Accept: Boolean);
     procedure CategoryTreeDragDrop(Sender: TBaseVirtualTree; Source: TObject; DataObject: TVTDragDataObject; Formats: TFormatArray; Shift: TShiftState; Pt: TPoint; var Effect: Integer; Mode: TDropMode);
+    procedure CategoryTreeChecking(Sender: TBaseVirtualTree; Node: PVirtualNode; var NewState: TCheckState; var Allowed: Boolean);
     procedure CategoryTreeChecked(Sender: TBaseVirtualTree; Node: PVirtualNode);
 
     // Marks tree event handlers
@@ -114,7 +115,7 @@ type
     procedure MarksTreeChecked(Sender: TBaseVirtualTree; Node: PVirtualNode);
 
     // Helper methods
-    procedure CategoryTreeViewModifyVisible(Node: PVirtualNode);
+    procedure ModifyCategoryVisible(Node: PVirtualNode);
 
     function GetNodeCategory(const ANode: PVirtualNode): IMarkCategory;
     function GetNodeMarkId(const ANode: PVirtualNode): IMarkId;
@@ -124,10 +125,12 @@ type
 
     function GetScrollInfo: TMarksExplorerViewScrollInfo;
     procedure SetScrollInfo(const AValue: TMarksExplorerViewScrollInfo);
+
+    procedure UpdateCategoryTree;
   public
     procedure Reset;
 
-    procedure UpdateCategoryTree;
+    procedure UpdateFull;
     procedure UpdateMarksList;
 
     function GetSelectedCategory: IMarkCategory;
@@ -202,15 +205,16 @@ begin
   FCategoryTree.Header.Options := FCategoryTree.Header.Options - [hoVisible];
   FCategoryTree.PopupMenu := ACategoriesPopupMenu;
 
-  FCategoryTree.OnInitNode := CategoryTreeInitNode;
-  FCategoryTree.OnFreeNode := CategoryTreeFreeNode;
-  FCategoryTree.OnGetText := CategoryTreeGetText;
-  FCategoryTree.OnChange := CategoryTreeChange;
-  FCategoryTree.OnKeyUp := CategoryTreeKeyUp;
-  FCategoryTree.OnContextPopup := CategoryTreeContextPopup;
-  FCategoryTree.OnDragOver := CategoryTreeDragOver;
-  FCategoryTree.OnDragDrop := CategoryTreeDragDrop;
-  FCategoryTree.OnChecked := CategoryTreeChecked;
+  FCategoryTree.OnInitNode := Self.CategoryTreeInitNode;
+  FCategoryTree.OnFreeNode := Self.CategoryTreeFreeNode;
+  FCategoryTree.OnGetText := Self.CategoryTreeGetText;
+  FCategoryTree.OnChange := Self.CategoryTreeChange;
+  FCategoryTree.OnKeyUp := Self.CategoryTreeKeyUp;
+  FCategoryTree.OnContextPopup := Self.CategoryTreeContextPopup;
+  FCategoryTree.OnDragOver := Self.CategoryTreeDragOver;
+  FCategoryTree.OnDragDrop := Self.CategoryTreeDragDrop;
+  FCategoryTree.OnChecking := Self.CategoryTreeChecking;
+  FCategoryTree.OnChecked := Self.CategoryTreeChecked;
 
   // Create marks tree
   FMarksTree := TVirtualStringTree.Create(nil);
@@ -225,20 +229,21 @@ begin
   FMarksTree.Header.Options := FMarksTree.Header.Options - [hoVisible];
   FMarksTree.PopupMenu := AMarksPopupMenu;
 
-  FMarksTree.OnInitNode := MarksTreeInitNode;
+  FMarksTree.OnInitNode := Self.MarksTreeInitNode;
   FMarksTree.OnFreeNode := nil;
-  FMarksTree.OnGetText := MarksTreeGetText;
-  FMarksTree.OnDblClick := MarksTreeDblClick;
-  FMarksTree.OnKeyDown := MarksTreeKeyDown;
-  FMarksTree.OnContextPopup := MarksTreeContextPopup;
-  FMarksTree.OnChecking := MarksTreeChecking;
-  FMarksTree.OnChecked := MarksTreeChecked;
+  FMarksTree.OnGetText := Self.MarksTreeGetText;
+  FMarksTree.OnDblClick := Self.MarksTreeDblClick;
+  FMarksTree.OnKeyDown := Self.MarksTreeKeyDown;
+  FMarksTree.OnContextPopup := Self.MarksTreeContextPopup;
+  FMarksTree.OnChecking := Self.MarksTreeChecking;
+  FMarksTree.OnChecked := Self.MarksTreeChecked;
 end;
 
 destructor TMarksExplorerView.Destroy;
 begin
   FreeAndNil(FMarksTree);
   FreeAndNil(FCategoryTree);
+
   inherited Destroy;
 end;
 
@@ -264,7 +269,8 @@ begin
 end;
 
 {$REGION 'Category tree event handlers'}
-procedure TMarksExplorerView.CategoryTreeInitNode(Sender: TBaseVirtualTree; ParentNode, Node: PVirtualNode; var InitialStates: TVirtualNodeInitStates);
+procedure TMarksExplorerView.CategoryTreeInitNode(Sender: TBaseVirtualTree; ParentNode, Node: PVirtualNode;
+  var InitialStates: TVirtualNodeInitStates);
 var
   VNodeData: PCategoryNodeData;
   VParentData: PCategoryNodeData;
@@ -313,7 +319,8 @@ begin
   end;
 end;
 
-procedure TMarksExplorerView.CategoryTreeGetText(Sender: TBaseVirtualTree; Node: PVirtualNode; Column: TColumnIndex; TextType: TVSTTextType; var CellText: string);
+procedure TMarksExplorerView.CategoryTreeGetText(Sender: TBaseVirtualTree; Node: PVirtualNode; Column: TColumnIndex;
+  TextType: TVSTTextType; var CellText: string);
 var
   VName: string;
   VNodeData: PCategoryNodeData;
@@ -344,7 +351,7 @@ begin
   if Key = VK_SPACE then begin
     VNode := FCategoryTree.GetFirstSelected;
     if VNode <> nil then begin
-      CategoryTreeViewModifyVisible(VNode);
+      ModifyCategoryVisible(VNode);
     end;
     Key := 0;
   end;
@@ -363,7 +370,8 @@ begin
   end;
 end;
 
-procedure TMarksExplorerView.CategoryTreeDragOver(Sender: TBaseVirtualTree; Source: TObject; Shift: TShiftState; State: TDragState; Pt: TPoint; Mode: TDropMode; var Effect: Integer; var Accept: Boolean);
+procedure TMarksExplorerView.CategoryTreeDragOver(Sender: TBaseVirtualTree; Source: TObject; Shift: TShiftState;
+  State: TDragState; Pt: TPoint; Mode: TDropMode; var Effect: Integer; var Accept: Boolean);
 var
   I: Integer;
   VNode: PVirtualNode;
@@ -490,16 +498,21 @@ begin
   end;
 end;
 
-procedure TMarksExplorerView.CategoryTreeChecked(Sender: TBaseVirtualTree; Node: PVirtualNode);
+procedure TMarksExplorerView.CategoryTreeChecking(Sender: TBaseVirtualTree; Node: PVirtualNode;
+  var NewState: TCheckState; var Allowed: Boolean);
 begin
-  FCategoryTree.ClearSelection;
-  FCategoryTree.Selected[Node] := True;
-  FCategoryTree.FocusedNode := Node;
-
-  CategoryTreeViewModifyVisible(Node);
+  Sender.ClearSelection;
 end;
 
-procedure TMarksExplorerView.CategoryTreeViewModifyVisible(Node: PVirtualNode);
+procedure TMarksExplorerView.CategoryTreeChecked(Sender: TBaseVirtualTree; Node: PVirtualNode);
+begin
+  Sender.Selected[Node] := True;
+  Sender.FocusedNode := Node;
+
+  ModifyCategoryVisible(Node);
+end;
+
+procedure TMarksExplorerView.ModifyCategoryVisible(Node: PVirtualNode);
 var
   I: Integer;
   VNewVisible: Boolean;
@@ -557,7 +570,8 @@ end;
 {$ENDREGION}
 
 {$REGION 'Marks tree event handlers'}
-procedure TMarksExplorerView.MarksTreeInitNode(Sender: TBaseVirtualTree; ParentNode, Node: PVirtualNode; var InitialStates: TVirtualNodeInitStates);
+procedure TMarksExplorerView.MarksTreeInitNode(Sender: TBaseVirtualTree; ParentNode, Node: PVirtualNode;
+  var InitialStates: TVirtualNodeInitStates);
 var
   VMarkId: IMarkId;
 begin
@@ -576,7 +590,8 @@ begin
   end;
 end;
 
-procedure TMarksExplorerView.MarksTreeGetText(Sender: TBaseVirtualTree; Node: PVirtualNode; Column: TColumnIndex; TextType: TVSTTextType; var CellText: string);
+procedure TMarksExplorerView.MarksTreeGetText(Sender: TBaseVirtualTree; Node: PVirtualNode; Column: TColumnIndex;
+  TextType: TVSTTextType; var CellText: string);
 var
   VMarkId: IMarkId;
 begin
@@ -631,17 +646,18 @@ begin
   end;
 end;
 
-procedure TMarksExplorerView.MarksTreeChecking(Sender: TBaseVirtualTree; Node: PVirtualNode; var NewState: TCheckState; var Allowed: Boolean);
+procedure TMarksExplorerView.MarksTreeChecking(Sender: TBaseVirtualTree; Node: PVirtualNode;
+  var NewState: TCheckState; var Allowed: Boolean);
 begin
-  FMarksTree.ClearSelection;
+  Sender.ClearSelection;
 end;
 
 procedure TMarksExplorerView.MarksTreeChecked(Sender: TBaseVirtualTree; Node: PVirtualNode);
 var
   VMarkId: IMarkId;
 begin
-  FMarksTree.Selected[Node] := True;
-  FMarksTree.FocusedNode := Node;
+  Sender.Selected[Node] := True;
+  Sender.FocusedNode := Node;
 
   VMarkId := GetNodeMarkId(Node);
   if Assigned(VMarkId) then begin
@@ -649,6 +665,12 @@ begin
   end;
 end;
 {$ENDREGION}
+
+procedure TMarksExplorerView.UpdateFull;
+begin
+  UpdateCategoryTree;
+  UpdateMarksList;
+end;
 
 procedure TMarksExplorerView.UpdateCategoryTree;
 var
@@ -688,8 +710,6 @@ begin
   if Assigned(FOnCategoritesViewChange) then begin
     FOnCategoritesViewChange(nil);
   end;
-
-  UpdateMarksList;
 end;
 
 procedure TMarksExplorerView.UpdateMarksList;
@@ -769,13 +789,13 @@ end;
 
 function TMarksExplorerView.GetNodeCategory(const ANode: PVirtualNode): IMarkCategory;
 var
-  NodeData: PCategoryNodeData;
+  VNodeData: PCategoryNodeData;
 begin
   Result := nil;
-  if ANode <> nil then begin
-    NodeData := FCategoryTree.GetNodeData(ANode);
-    if Assigned(NodeData) then begin
-      Result := NodeData.Category.MarkCategory;
+  if Assigned(ANode) then begin
+    VNodeData := FCategoryTree.GetNodeData(ANode);
+    if Assigned(VNodeData) and Assigned(VNodeData.Category) then begin
+      Result := VNodeData.Category.MarkCategory;
     end;
   end;
 end;

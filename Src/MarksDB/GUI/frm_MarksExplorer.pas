@@ -413,17 +413,17 @@ procedure TfrmMarksExplorer.FormShow(Sender: TObject);
 var
   VWidth: Integer;
 begin
-  FMarksExplorerView.UpdateCategoryTree;
+  FMarksExplorerView.UpdateFull;
   FMarksExplorerView.CascadeChange := chkCascade.Checked;
   FMarksExplorerView.RestoreCategoriesState(FExpandedCategoriesInfo, FSelectedCategoryInfo);
   FMarksExplorerView.ScrollInfo := FMarksExplorerViewScrollInfo;
 
   btnNavOnMark.Checked := FNavToPoint.IsActive;
 
+  FMarksShowConfig.ChangeNotifier.Add(FMarksShowConfigListener);
   FMarkSystemConfig.ChangeNotifier.Add(FMarkSystemConfigListener);
   FMarkDBGUI.MarksDb.CategoryDB.ChangeNotifier.Add(FCategoryDBListener);
   FMarkDBGUI.MarksDb.MarkDb.ChangeNotifier.Add(FMarksDBListener);
-  FMarksShowConfig.ChangeNotifier.Add(FMarksShowConfigListener);
   FMarkDBGUI.MarksDb.State.ChangeNotifier.Add(FMarksSystemStateListener);
   FWindowConfig.ChangeNotifier.Add(FConfigListener);
 
@@ -1086,18 +1086,20 @@ procedure TfrmMarksExplorer.tbitmPasteClick(Sender: TObject);
     VMarkIdListNew: IInterfaceListSimple;
     VCategoryNew: ICategory;
     VMark: IVectorDataItem;
+    VMarkDb: IMarkDb;
   begin
     VCategoryNew := FMarksExplorerView.GetSelectedCategory;
     if VCategoryNew <> nil then begin
+      VMarkDb := FMarkDBGUI.MarksDb.MarkDb;
       VMarkIdListNew := TInterfaceListSimple.Create;
       for I := 0 to FCopyPasteBuffer.Count - 1 do begin
-        VMark := FMarkDBGUI.MarksDb.MarkDb.GetMarkByID(IMarkId(FCopyPasteBuffer.Items[I]));
-        VMarkIdListNew.Add(FMarkDBGUI.MarksDb.MarkDb.Factory.ReplaceCategory(VMark, VCategoryNew));
+        VMark := VMarkDb.GetMarkByID(IMarkId(FCopyPasteBuffer.Items[I]));
+        VMarkIdListNew.Add(VMarkDb.Factory.ReplaceCategory(VMark, VCategoryNew));
       end;
       if AMove then begin
-        FMarkDBGUI.MarksDb.MarkDb.UpdateMarkList(FCopyPasteBuffer, VMarkIdListNew.MakeStaticAndClear);
+        VMarkDb.UpdateMarkList(FCopyPasteBuffer, VMarkIdListNew.MakeStaticAndClear);
       end else begin
-        FMarkDBGUI.MarksDb.MarkDb.UpdateMarkList(nil, VMarkIdListNew.MakeStaticAndClear);
+        VMarkDb.UpdateMarkList(nil, VMarkIdListNew.MakeStaticAndClear);
       end;
     end;
   end;
@@ -1113,7 +1115,6 @@ begin
   end;
 
   ResetCopyPasteBuffer;
-  FMarksExplorerView.UpdateMarksList;
 end;
 
 procedure TfrmMarksExplorer.tbxEditClick(Sender: TObject);
@@ -1143,7 +1144,18 @@ end;
 
 procedure TfrmMarksExplorer.OnCategoryDbChanged;
 begin
-  FMarksExplorerView.UpdateCategoryTree;
+  FMarksExplorerView.UpdateFull;
+end;
+
+procedure TfrmMarksExplorer.OnMarksDbChanged;
+begin
+  FMarksExplorerView.UpdateMarksList;
+end;
+
+procedure TfrmMarksExplorer.OnMarksExplorerFilterChanged;
+begin
+  tbitmFilter.Checked := FMarksExplorerFilter.Enabled;
+  FMarksExplorerView.UpdateMarksList;
 end;
 
 procedure TfrmMarksExplorer.OnConfigChange;
@@ -1159,17 +1171,6 @@ begin
     Exit;
   end;
   BoundsRect := VRect;
-end;
-
-procedure TfrmMarksExplorer.OnMarksDbChanged;
-begin
-  FMarksExplorerView.UpdateMarksList;
-end;
-
-procedure TfrmMarksExplorer.OnMarksExplorerFilterChanged;
-begin
-  tbitmFilter.Checked := FMarksExplorerFilter.Enabled;
-  FMarksExplorerView.UpdateMarksList;
 end;
 
 procedure TfrmMarksExplorer.OnMarksShowConfigChanged;
