@@ -29,7 +29,6 @@ uses
   SysUtils,
   Classes,
   Controls,
-  ComCtrls,
   Messages,
   Menus,
   Forms,

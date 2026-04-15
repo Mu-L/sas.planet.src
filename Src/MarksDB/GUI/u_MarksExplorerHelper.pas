@@ -32,12 +32,17 @@ uses
   i_MarkSystemConfig;
 
 type
+  TCategoryUniqueID = Cardinal;
+
   TCategoryInfo = record
-    UID: Cardinal;
+    UID: TCategoryUniqueID;
     Index: Integer;
     Category: ICategory;
   end;
   TCategoryInfoArray = array of TCategoryInfo;
+
+const
+  CEmptyUniqueID: TCategoryUniqueID = 0;
 
 function CategoryInfoToString(const AInfo: TCategoryInfo): string;
 function CategoryInfoArrayToString(const AInfo: TCategoryInfoArray): string;
@@ -45,7 +50,7 @@ function CategoryInfoArrayToString(const AInfo: TCategoryInfoArray): string;
 function CategoryInfoFromString(const AStr: string): TCategoryInfo;
 function CategoryInfoArrayFromString(const AStr: string): TCategoryInfoArray;
 
-function GetNodeUniqueID(const ANodeData: ICategory): Cardinal; inline;
+function GetCategoryUniqueID(const ACategory: ICategory): TCategoryUniqueID; inline;
 
 procedure RefreshConfigListMenu(
   const ASubmenuItem: TTBXSubmenuItem;
@@ -69,7 +74,7 @@ const
 
 function CategoryInfoToString(const AInfo: TCategoryInfo): string;
 begin
-  if AInfo.UID = 0 then begin
+  if AInfo.UID = CEmptyUniqueID then begin
     Result := '';
   end else begin
     Result := IntToHex(AInfo.UID, 8) + cSep2 + IntToStr(AInfo.Index);
@@ -103,7 +108,7 @@ begin
     Result.UID := VArr[0].UID;
     Result.Index := VArr[0].Index;
   end else begin
-    Result.UID := 0;
+    Result.UID := CEmptyUniqueID;
     Result.Index := -1;
   end;
   Result.Category := nil;
@@ -147,13 +152,13 @@ begin
   end;
 end;
 
-function GetNodeUniqueID(const ANodeData: ICategory): Cardinal;
+function GetCategoryUniqueID(const ACategory: ICategory): TCategoryUniqueID;
 var
   VName: string;
 begin
-  Result := 0;
-  if ANodeData <> nil then begin
-    VName := ANodeData.Name;
+  Result := CEmptyUniqueID;
+  if ACategory <> nil then begin
+    VName := ACategory.Name;
     if VName <> '' then begin
       Result := CityHash32(@VName[1], Length(VName) * SizeOf(Char));
     end;

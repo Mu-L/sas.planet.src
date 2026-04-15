@@ -33,22 +33,22 @@ type
   private
     FName: string;
     FVisible: Boolean;
-    FAfterScale: integer;
-    FBeforeScale: integer;
+    FAfterScale: Integer;
+    FBeforeScale: Integer;
   private
     function GetName: string;
     function IsSame(const ACategory: ICategory): Boolean;
     function IsEqual(const ACategory: ICategory): Boolean;
   private
-    function GetVisible: boolean;
-    function GetAfterScale: integer;
-    function GetBeforeScale: integer;
+    function GetVisible: Boolean;
+    function GetAfterScale: Integer;
+    function GetBeforeScale: Integer;
   public
     constructor Create(
       const AName: string;
       AVisible: Boolean;
-      AAfterScale: integer;
-      ABeforeScale: integer
+      AAfterScale: Integer;
+      ABeforeScale: Integer
     );
   end;
 
@@ -62,7 +62,7 @@ uses
 constructor TMarkCategory.Create(
   const AName: string;
   AVisible: Boolean;
-  AAfterScale, ABeforeScale: integer
+  AAfterScale, ABeforeScale: Integer
 );
 begin
   inherited Create;
@@ -72,12 +72,12 @@ begin
   FBeforeScale := ABeforeScale;
 end;
 
-function TMarkCategory.GetAfterScale: integer;
+function TMarkCategory.GetAfterScale: Integer;
 begin
   Result := FAfterScale;
 end;
 
-function TMarkCategory.GetBeforeScale: integer;
+function TMarkCategory.GetBeforeScale: Integer;
 begin
   Result := FBeforeScale;
 end;
@@ -87,7 +87,7 @@ begin
   Result := FName;
 end;
 
-function TMarkCategory.GetVisible: boolean;
+function TMarkCategory.GetVisible: Boolean;
 begin
   Result := FVisible;
 end;

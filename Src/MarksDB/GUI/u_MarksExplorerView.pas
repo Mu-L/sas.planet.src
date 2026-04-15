@@ -167,7 +167,7 @@ type
 implementation
 
 uses
-  CityHash,
+  CityHash, // inlining
   ExplorerSort,
   i_MarkCategoryDB,
   i_MarkCategoryFactory,
@@ -945,7 +945,7 @@ begin
   VLen := 64;
   SetLength(AExpanded, VLen);
 
-  ASelected.UID := 0;
+  ASelected.UID := CEmptyUniqueID;
   ASelected.Category := nil;
 
   VNodeIndex := 0;
@@ -965,23 +965,23 @@ begin
 
         AExpanded[I].Index := VNodeIndex;
         AExpanded[I].Category := VNodeData.Category.MarkCategory;
-        AExpanded[I].UID := GetNodeUniqueID(AExpanded[I].Category);
+        AExpanded[I].UID := GetCategoryUniqueID(AExpanded[I].Category);
 
-        if AExpanded[I].UID <> 0 then begin
+        if AExpanded[I].UID <> CEmptyUniqueID then begin
           Inc(I);
         end;
       end;
     end;
 
     // Selected
-    if (ASelected.UID = 0) and FMarksTree.Selected[VNode] then begin
+    if (ASelected.UID = CEmptyUniqueID) and FMarksTree.Selected[VNode] then begin
       if VNodeData = nil then begin
         VNodeData := FCategoryTree.GetNodeData(VNode);
       end;
       if (VNodeData <> nil) and (VNodeData.Category <> nil) then begin
         ASelected.Index := VNodeIndex;
         ASelected.Category := VNodeData.Category.MarkCategory;
-        ASelected.UID := GetNodeUniqueID(ASelected.Category);
+        ASelected.UID := GetCategoryUniqueID(ASelected.Category);
       end;
     end;
 
@@ -1006,7 +1006,7 @@ var
   VNodeUID: Cardinal;
 begin
   VExpandedLen := Length(AExpanded);
-  VSelectedFound := (ASelected.UID = 0);
+  VSelectedFound := (ASelected.UID = CEmptyUniqueID);
 
   if (VExpandedLen = 0) and VSelectedFound then begin
     Exit;
@@ -1022,12 +1022,12 @@ begin
     VNodeData := FCategoryTree.GetNodeData(VNode);
     if (VNodeData <> nil) and (VNodeData.Category <> nil) then begin
 
-      VNodeUID := 0;
+      VNodeUID := CEmptyUniqueID;
 
       // Expanded
       if (VNode.ChildCount > 0) and (VExpandedFoundCount < VExpandedLen) then begin
 
-        VNodeUID := GetNodeUniqueID(VNodeData.Category.MarkCategory);
+        VNodeUID := GetCategoryUniqueID(VNodeData.Category.MarkCategory);
 
         for I := 0 to VExpandedLen - 1 do begin
 
@@ -1056,8 +1056,8 @@ begin
 
       // Selected
       if not VSelectedFound then begin
-        if VNodeUID = 0 then begin
-          VNodeUID := GetNodeUniqueID(VNodeData.Category.MarkCategory);
+        if VNodeUID = CEmptyUniqueID then begin
+          VNodeUID := GetCategoryUniqueID(VNodeData.Category.MarkCategory);
         end;
 
         VSelectedFound :=
