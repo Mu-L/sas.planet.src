@@ -83,6 +83,7 @@ type
 
     FMarkCategoryTree: IMarkCategoryTree;
     FMarksList: IInterfaceListStatic;
+    FMarksName: TStringDynArray;
 
     FCategoriesCount: TMarksExplorerViewCount;
     FMarksCount: TMarksExplorerViewCount;
@@ -117,8 +118,9 @@ type
     // Helper methods
     procedure ModifyCategoryVisible(Node: PVirtualNode);
 
-    function GetNodeCategory(const ANode: PVirtualNode): IMarkCategory;
-    function GetNodeMarkId(const ANode: PVirtualNode): IMarkId;
+    function GetNodeCategory(const ANode: PVirtualNode): IMarkCategory; inline;
+    function GetNodeMarkId(const ANode: PVirtualNode): IMarkId; inline;
+    function GetNodeMarkName(const ANode: PVirtualNode; var AName: string): Boolean; inline;
 
     procedure GetMarksTreeState(var AState: TMarksTreeState);
     procedure RestoreMarksTreeState(const AState: TMarksTreeState);
@@ -254,6 +256,8 @@ begin
 
   FMarksList := nil;
   FMarkCategoryTree := nil;
+
+  FMarksName := nil;
 end;
 
 function TMarksExplorerView.GetCategoriesCount: PMarksExplorerViewCount;
@@ -595,6 +599,10 @@ procedure TMarksExplorerView.MarksTreeGetText(Sender: TBaseVirtualTree; Node: PV
 var
   VMarkId: IMarkId;
 begin
+  if GetNodeMarkName(Node, CellText) then begin
+    Exit;
+  end;
+
   VMarkId := GetNodeMarkId(Node);
 
   if Assigned(VMarkId) then begin
@@ -714,40 +722,41 @@ end;
 
 procedure TMarksExplorerView.UpdateMarksList;
 
-  procedure SortMarksByName(var AMarksList: IInterfaceListStatic);
+  procedure PrepareMarksName(const AMarksList: IInterfaceListStatic; var AMarksName: TStringDynArray);
   var
     I: Integer;
-    VList: IInterfaceListSimple;
-    VMeasure: array of string;
   begin
-    if AMarksList.Count > 0 then begin
-      SetLength(VMeasure, AMarksList.Count);
-      for I := 0 to AMarksList.Count - 1 do begin
-        VMeasure[I] := FMarkDBGUI.MakeMarkCaption(IMarkId(AMarksList.Items[I]));
-      end;
-      VList := TInterfaceListSimple.Create;
-      VList.AddListStatic(AMarksList);
-      SortInterfaceListByStringMeasure(VList, VMeasure);
-      AMarksList := VList.MakeStaticAndClear;
+    SetLength(AMarksName, AMarksList.Count);
+    for I := 0 to AMarksList.Count - 1 do begin
+      AMarksName[I] := FMarkDBGUI.MakeMarkCaption(IMarkId(AMarksList.Items[I]));
     end;
   end;
 
-  procedure UpdateMarksCount(const AVisibleCount: Integer);
+  procedure SortMarksByName(var AMarksList: IInterfaceListStatic; var AMarksName: TStringDynArray);
+  var
+    VList: IInterfaceListSimple;
+  begin
+    VList := TInterfaceListSimple.Create;
+    VList.AddListStatic(AMarksList);
+    SortInterfaceListByStringMeasure(VList, AMarksName); // sort marks list and names array
+    AMarksList := VList.MakeStaticAndClear;
+  end;
+
+  procedure UpdateMarksCount(const AVisibleCount, ATotalCount: Integer);
   begin
     FMarksCount.Selected := FMarksTree.SelectedCount;
     FMarksCount.Visible := AVisibleCount;
-    if Assigned(FMarksList) then begin
-      FMarksCount.Total := FMarksList.Count;
-    end else begin
-      FMarksCount.Total := -1;
-    end;
+    FMarksCount.Total := ATotalCount;
   end;
 
+const
+  CMaxSortCount = 10 * 1000;
 var
   I: Integer;
   VMarkDb: IMarkDb;
   VCategory: IMarkCategory;
   VState: TMarksTreeState;
+  VMarksCount: Integer;
   VVisibleCount: Integer;
 begin
   FMarksTree.BeginUpdate;
@@ -757,6 +766,8 @@ begin
 
     FMarksList := nil;
     VCategory := GetSelectedCategory;
+
+    VMarksCount := -1;
     VVisibleCount := 0;
 
     if Assigned(VCategory) then begin
@@ -764,11 +775,19 @@ begin
       FMarksList := FMarksExplorerFilter.Process(VMarkDb, VMarkDb.GetMarkIdListByCategory(VCategory));
 
       if Assigned(FMarksList) then begin
-        SortMarksByName(FMarksList);
+
+        VMarksCount := FMarksList.Count;
+
+        if (VMarksCount > 1) and (VMarksCount < CMaxSortCount) then begin
+          PrepareMarksName(FMarksList, FMarksName);
+          SortMarksByName(FMarksList, FMarksName);
+        end else begin
+          FMarksName := nil;
+        end;
 
         FMarksTree.RootNodeCount := FMarksList.Count;
 
-        for I := 0 to FMarksList.Count - 1 do begin
+        for I := 0 to VMarksCount - 1 do begin
           if VMarkDb.GetMarkVisibleByID(IMarkId(FMarksList.Items[I])) then begin
             Inc(VVisibleCount);
           end;
@@ -777,7 +796,7 @@ begin
     end;
 
     RestoreMarksTreeState(VState);
-    UpdateMarksCount(VVisibleCount);
+    UpdateMarksCount(VVisibleCount, VMarksCount);
   finally
     FMarksTree.EndUpdate;
   end;
@@ -806,6 +825,19 @@ begin
     Result := IMarkId(FMarksList.Items[ANode.Index]);
   end else begin
     Result := nil;
+    Assert(False);
+  end;
+end;
+
+function TMarksExplorerView.GetNodeMarkName(const ANode: PVirtualNode; var AName: string): Boolean;
+begin
+  Result := False;
+  if Assigned(FMarksList) and Assigned(ANode) and (ANode.Index < Cardinal(FMarksList.Count)) then begin
+    if Length(FMarksName) = FMarksList.Count then begin
+      AName := FMarksName[ANode.Index];
+      Result := AName <> '';
+    end;
+  end else begin
     Assert(False);
   end;
 end;
