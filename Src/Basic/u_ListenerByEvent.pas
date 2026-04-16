@@ -37,20 +37,23 @@ type
     FDisconnectFlag: ISimpleFlag;
     FEvent: TNotifyListenerEvent;
   private
+    { IListener }
     procedure Notification(const AMsg: IInterface);
   private
+    { IListenerDisconnectable }
     procedure Disconnect;
   public
-    constructor Create(AEvent: TNotifyListenerEvent);
+    constructor Create(const AEvent: TNotifyListenerEvent);
   end;
 
   TNotifyNoMmgEventListener = class(TBaseInterfacedObject, IListener)
   private
     FEvent: TNotifyListenerNoMmgEvent;
   private
+    { IListener }
     procedure Notification(const AMsg: IInterface);
   public
-    constructor Create(AEvent: TNotifyListenerNoMmgEvent);
+    constructor Create(const AEvent: TNotifyListenerNoMmgEvent);
   end;
 
   TNotifyEventListenerSync = class(TBaseInterfacedObject, IListener)
@@ -62,12 +65,13 @@ type
     FEvent: TNotifyListenerNoMmgEvent;
     procedure OnTimer;
   private
+    { IListener }
     procedure Notification(const AMsg: IInterface);
   public
     constructor Create(
       const ATimerNoifier: INotifierTime;
-      const ACheckTime: Cardinal;
-      AEvent: TNotifyListenerNoMmgEvent
+      const ACheckInterval: Cardinal;
+      const AEvent: TNotifyListenerNoMmgEvent
     );
     destructor Destroy; override;
   end;
@@ -78,14 +82,14 @@ uses
   u_ListenerTime,
   u_SimpleFlagWithInterlock;
 
-{ TSimpleEventListener }
+{ TNotifyEventListener }
 
-constructor TNotifyEventListener.Create(AEvent: TNotifyListenerEvent);
+constructor TNotifyEventListener.Create(const AEvent: TNotifyListenerEvent);
 begin
+  Assert(Assigned(AEvent));
   inherited Create;
   FEvent := AEvent;
   FDisconnectFlag := TSimpleFlagWithInterlock.Create;
-  Assert(Assigned(FEvent));
 end;
 
 procedure TNotifyEventListener.Disconnect;
@@ -105,17 +109,21 @@ end;
 
 constructor TNotifyEventListenerSync.Create(
   const ATimerNoifier: INotifierTime;
-  const ACheckTime: Cardinal;
-  AEvent: TNotifyListenerNoMmgEvent
+  const ACheckInterval: Cardinal;
+  const AEvent: TNotifyListenerNoMmgEvent
 );
 begin
+  Assert(Assigned(AEvent));
+  Assert(Assigned(ATimerNoifier));
+
   inherited Create;
+
   FTimerNoifier := ATimerNoifier;
   FEvent := AEvent;
-  Assert(Assigned(FEvent));
-  Assert(Assigned(FTimerNoifier));
+
   FNeedNotifyFlag := TSimpleFlagWithInterlock.Create;
-  FTimerListener := TListenerTimeCheck.Create(Self.OnTimer, ACheckTime);
+
+  FTimerListener := TListenerTimeCheck.Create(Self.OnTimer, ACheckInterval);
   FTimerNoifier.Add(FTimerListener);
 end;
 
@@ -144,11 +152,11 @@ end;
 
 { TNotifyNoMmgEventListener }
 
-constructor TNotifyNoMmgEventListener.Create(AEvent: TNotifyListenerNoMmgEvent);
+constructor TNotifyNoMmgEventListener.Create(const AEvent: TNotifyListenerNoMmgEvent);
 begin
+  Assert(Assigned(AEvent));
   inherited Create;
   FEvent := AEvent;
-  Assert(Assigned(FEvent));
 end;
 
 procedure TNotifyNoMmgEventListener.Notification(const AMsg: IInterface);
