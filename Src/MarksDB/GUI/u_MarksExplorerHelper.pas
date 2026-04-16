@@ -39,6 +39,8 @@ type
     Index: Integer;
     Category: ICategory;
   end;
+  PCategoryInfo = ^TCategoryInfo;
+
   TCategoryInfoArray = array of TCategoryInfo;
 
 const

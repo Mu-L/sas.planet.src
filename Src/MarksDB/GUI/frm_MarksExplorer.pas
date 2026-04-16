@@ -212,9 +212,8 @@ type
 
     FMarksExplorerView: TMarksExplorerView;
 
-    FExpandedCategoriesInfo: TCategoryInfoArray;
-    FSelectedCategoryInfo: TCategoryInfo;
-    FMarksExplorerViewScrollInfo: TMarksExplorerViewScrollInfo;
+    FCategoriesTreeState: TMarksExplorerView.TCategoriesTreeState;
+    FMarksExplorerViewScrollInfo: TMarksExplorerView.TScrollInfo;
 
     FUseAsIndepentWindow: Boolean;
     FMapGoto: IMapViewGoto;
@@ -415,18 +414,16 @@ begin
     Self.Position := poMainFormCenter;
     FWindowConfig.SetWindowPosition(Self.BoundsRect);
   end;
-  FSelectedCategoryInfo := CategoryInfoFromString(FMarksExplorerConfig.SelectedCategory);
-  FExpandedCategoriesInfo := CategoryInfoArrayFromString(FMarksExplorerConfig.ExpandedCategories);
+  FCategoriesTreeState.Selected := CategoryInfoFromString(FMarksExplorerConfig.SelectedCategory);
+  FCategoriesTreeState.Expanded := CategoryInfoArrayFromString(FMarksExplorerConfig.ExpandedCategories);
 end;
 
 procedure TfrmMarksExplorer.FormShow(Sender: TObject);
 var
   VWidth: Integer;
 begin
-  FMarksExplorerView.UpdateFull;
   FMarksExplorerView.CascadeChange := chkCascade.Checked;
-  FMarksExplorerView.RestoreCategoriesState(FExpandedCategoriesInfo, FSelectedCategoryInfo);
-  FMarksExplorerView.ScrollInfo := FMarksExplorerViewScrollInfo;
+  FMarksExplorerView.UpdateFull(@FCategoriesTreeState, @FMarksExplorerViewScrollInfo);
 
   btnNavOnMark.Checked := FNavToPoint.IsActive;
 
@@ -467,9 +464,9 @@ begin
   FMarkDBGUI.MarksDb.State.ChangeNotifier.Remove(FMarksSystemStateListener);
 
   FMarksExplorerViewScrollInfo := FMarksExplorerView.ScrollInfo;
-  FMarksExplorerView.GetCategoriesState(FExpandedCategoriesInfo, FSelectedCategoryInfo);
-  FMarksExplorerConfig.SelectedCategory := CategoryInfoToString(FSelectedCategoryInfo);
-  FMarksExplorerConfig.ExpandedCategories := CategoryInfoArrayToString(FExpandedCategoriesInfo);
+  FMarksExplorerView.GetCategoriesTreeState(@FCategoriesTreeState);
+  FMarksExplorerConfig.SelectedCategory := CategoryInfoToString(FCategoriesTreeState.Selected);
+  FMarksExplorerConfig.ExpandedCategories := CategoryInfoArrayToString(FCategoriesTreeState.Expanded);
   FMarksExplorerView.Reset;
 
   FCopyPasteBuffer := nil;
@@ -1139,7 +1136,7 @@ end;
 
 procedure TfrmMarksExplorer.OnMarksViewChanged(Sender: TObject);
 var
-  VCount: PMarksExplorerViewCount;
+  VCount: TMarksExplorerView.PTreeCounts;
 begin
   VCount := FMarksExplorerView.GetMarksCount;
   if VCount.Total < 0 then begin

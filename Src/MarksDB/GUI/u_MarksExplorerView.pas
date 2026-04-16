@@ -48,19 +48,26 @@ uses
   u_MarkDbGUIHelper;
 
 type
-  TMarksExplorerViewCount = record
-    Selected: Integer;
-    Visible: Integer;
-    Total: Integer;
-  end;
-  PMarksExplorerViewCount = ^TMarksExplorerViewCount;
-
-  TMarksExplorerViewScrollInfo = record
-    MarksOffsetY: Integer;
-    CategoriesOffsetY: Integer;
-  end;
-
   TMarksExplorerView = class
+  public type
+    TTreeCounts = record
+      Selected: Integer;
+      Visible: Integer;
+      Total: Integer;
+    end;
+    PTreeCounts = ^TTreeCounts;
+
+    TScrollInfo = record
+      MarksOffsetY: Integer;
+      CategoriesOffsetY: Integer;
+    end;
+    PScrollInfo = ^TScrollInfo;
+
+    TCategoriesTreeState = record
+      Expanded: TCategoryInfoArray;
+      Selected: TCategoryInfo;
+    end;
+    PCategoriesTreeState = ^TCategoriesTreeState;
   private type
     TCategoryNodeData = record
       Category: IMarkCategoryTree;
@@ -74,6 +81,7 @@ type
       ScrollOffsetY: TDimension;
       TreeItemsCount: Cardinal;
     end;
+    PMarksTreeState = ^TMarksTreeState;
   private
     FMarkDBGUI: TMarkDbGUIHelper;
     FMarksExplorerFilter: IMarksExplorerFilter;
@@ -85,8 +93,8 @@ type
     FMarksList: IInterfaceListStatic;
     FMarksName: TStringDynArray;
 
-    FCategoriesCount: TMarksExplorerViewCount;
-    FMarksCount: TMarksExplorerViewCount;
+    FCategoriesCount: TTreeCounts;
+    FMarksCount: TTreeCounts;
 
     FCascadeChange: Boolean;
 
@@ -122,18 +130,18 @@ type
     function GetNodeMarkId(const ANode: PVirtualNode): IMarkId; inline;
     function GetNodeMarkName(const ANode: PVirtualNode; var AName: string): Boolean; inline;
 
-    procedure GetMarksTreeState(var AState: TMarksTreeState);
-    procedure RestoreMarksTreeState(const AState: TMarksTreeState);
+    procedure GetMarksTreeState(const AState: PMarksTreeState);
+    procedure RestoreMarksTreeState(const AState: PMarksTreeState);
 
-    function GetScrollInfo: TMarksExplorerViewScrollInfo;
-    procedure SetScrollInfo(const AValue: TMarksExplorerViewScrollInfo);
+    function GetScrollInfo: TScrollInfo;
+    procedure SetScrollInfo(const AValue: TScrollInfo);
 
-    procedure UpdateCategoryTree;
+    procedure UpdateCategoryTree(const ACateriesInfo: PCategoriesTreeState; const AScrollInfo: PScrollInfo);
   public
     procedure Reset;
 
-    procedure UpdateFull;
-    procedure UpdateMarksList;
+    procedure UpdateFull(const ACateriesInfo: PCategoriesTreeState = nil; const AScrollInfo: PScrollInfo = nil);
+    procedure UpdateMarksList(const AScrollInfo: PScrollInfo = nil);
 
     function GetSelectedCategory: IMarkCategory;
     function GetSelectedMarkId: IMarkId;
@@ -144,14 +152,14 @@ type
     procedure SelectAllVisibleMarks;
     procedure RevertSelectedMarks;
 
-    function GetCategoriesCount: PMarksExplorerViewCount;
-    function GetMarksCount: PMarksExplorerViewCount;
+    function GetCategoriesCount: PTreeCounts;
+    function GetMarksCount: PTreeCounts;
 
-    procedure GetCategoriesState(var AExpanded: TCategoryInfoArray; var ASelected: TCategoryInfo);
-    procedure RestoreCategoriesState(const AExpanded: TCategoryInfoArray; const ASelected: TCategoryInfo);
+    procedure GetCategoriesTreeState(const AState: PCategoriesTreeState);
+    procedure RestoreCategoriesTreeState(const AState: PCategoriesTreeState);
 
     property CascadeChange: Boolean read FCascadeChange write FCascadeChange;
-    property ScrollInfo: TMarksExplorerViewScrollInfo read GetScrollInfo write SetScrollInfo;
+    property ScrollInfo: TScrollInfo read GetScrollInfo write SetScrollInfo;
 
     property OnMarksViewChange: TNotifyEvent read FOnMarksViewChange write FOnMarksViewChange;
     property OnMarksViewDblClick: TNotifyEvent read FOnMarksViewDblClick write FOnMarksViewDblClick;
@@ -251,22 +259,27 @@ end;
 
 procedure TMarksExplorerView.Reset;
 begin
-  FMarksTree.Clear;
-  FCategoryTree.Clear;
+  FCategoryTree.OnChange := nil;
+  try
+    FMarksTree.Clear;
+    FCategoryTree.Clear;
 
-  FMarksList := nil;
-  FMarkCategoryTree := nil;
+    FMarksList := nil;
+    FMarkCategoryTree := nil;
 
-  FMarksName := nil;
+    FMarksName := nil;
+  finally
+    FCategoryTree.OnChange := Self.CategoryTreeChange;
+  end;
 end;
 
-function TMarksExplorerView.GetCategoriesCount: PMarksExplorerViewCount;
+function TMarksExplorerView.GetCategoriesCount: PTreeCounts;
 begin
   Result := @FCategoriesCount;
   Result.Selected := FCategoryTree.SelectedCount;
 end;
 
-function TMarksExplorerView.GetMarksCount: PMarksExplorerViewCount;
+function TMarksExplorerView.GetMarksCount: PTreeCounts;
 begin
   Result := @FMarksCount;
   Result.Selected := FMarksTree.SelectedCount;
@@ -674,26 +687,36 @@ begin
 end;
 {$ENDREGION}
 
-procedure TMarksExplorerView.UpdateFull;
+procedure TMarksExplorerView.UpdateFull(const ACateriesInfo: PCategoriesTreeState; const AScrollInfo: PScrollInfo);
 begin
-  UpdateCategoryTree;
-  UpdateMarksList;
+  UpdateCategoryTree(ACateriesInfo, AScrollInfo);
+  UpdateMarksList(AScrollInfo);
 end;
 
-procedure TMarksExplorerView.UpdateCategoryTree;
+procedure TMarksExplorerView.UpdateCategoryTree(const ACateriesInfo: PCategoriesTreeState; const AScrollInfo: PScrollInfo);
 var
   VCategoryDB: IMarkCategoryDB;
   VCategoryList: IMarkCategoryList;
-  VExpandedInfo: TCategoryInfoArray;
-  VSelectedInfo: TCategoryInfo;
+  VState: PCategoriesTreeState;
+  VStateLocal: TCategoriesTreeState;
   VScrollOffsetY: TDimension;
 begin
   FCategoryTree.OnChange := nil;
   try
     FCategoryTree.BeginUpdate;
     try
-      VScrollOffsetY := FCategoryTree.OffsetY;
-      GetCategoriesState(VExpandedInfo, VSelectedInfo);
+      if AScrollInfo <> nil then begin
+        VScrollOffsetY := AScrollInfo.CategoriesOffsetY;
+      end else begin
+        VScrollOffsetY := FCategoryTree.OffsetY;
+      end;
+
+      if ACateriesInfo = nil then begin
+        VState := @VStateLocal;
+        GetCategoriesTreeState(VState);
+      end else begin
+        VState := ACateriesInfo;
+      end;
 
       FCategoryTree.Clear;
 
@@ -706,13 +729,13 @@ begin
         FCategoryTree.RootNodeCount := FMarkCategoryTree.SubItemCount;
       end;
 
-      RestoreCategoriesState(VExpandedInfo, VSelectedInfo);
+      RestoreCategoriesTreeState(VState);
       FCategoryTree.OffsetY := VScrollOffsetY;
     finally
       FCategoryTree.EndUpdate;
     end;
   finally
-    FCategoryTree.OnChange := CategoryTreeChange;
+    FCategoryTree.OnChange := Self.CategoryTreeChange;
   end;
 
   if Assigned(FOnCategoritesViewChange) then begin
@@ -720,7 +743,7 @@ begin
   end;
 end;
 
-procedure TMarksExplorerView.UpdateMarksList;
+procedure TMarksExplorerView.UpdateMarksList(const AScrollInfo: PScrollInfo);
 
   procedure PrepareMarksName(const AMarksList: IInterfaceListStatic; var AMarksName: TStringDynArray);
   var
@@ -761,7 +784,12 @@ var
 begin
   FMarksTree.BeginUpdate;
   try
-    GetMarksTreeState(VState);
+    GetMarksTreeState(@VState);
+
+    if AScrollInfo <> nil then begin
+      VState.ScrollOffsetY := AScrollInfo.MarksOffsetY;
+    end;
+
     FMarksTree.Clear;
 
     FMarksList := nil;
@@ -795,7 +823,7 @@ begin
       end;
     end;
 
-    RestoreMarksTreeState(VState);
+    RestoreMarksTreeState(@VState);
     UpdateMarksCount(VVisibleCount, VMarksCount);
   finally
     FMarksTree.EndUpdate;
@@ -985,20 +1013,24 @@ begin
   end;
 end;
 
-procedure TMarksExplorerView.GetCategoriesState(var AExpanded: TCategoryInfoArray; var ASelected: TCategoryInfo);
+procedure TMarksExplorerView.GetCategoriesTreeState(const AState: PCategoriesTreeState);
 var
   I: Integer;
   VLen: Integer;
   VNode: PVirtualNode;
   VNodeData: PCategoryNodeData;
   VNodeIndex: Integer;
+  VInfo: PCategoryInfo;
+  VSelected: PCategoryInfo;
 begin
   I := 0;
   VLen := 64;
-  SetLength(AExpanded, VLen);
+  SetLength(AState.Expanded, VLen);
 
-  ASelected.UID := CEmptyUniqueID;
-  ASelected.Category := nil;
+  VSelected := @AState.Selected;
+
+  VSelected.UID := CEmptyUniqueID;
+  VSelected.Category := nil;
 
   VNodeIndex := 0;
   VNode := FCategoryTree.GetFirst;
@@ -1012,28 +1044,30 @@ begin
       if (VNodeData <> nil) and (VNodeData.Category <> nil) then begin
         if I >= VLen then begin
           VLen := GrowCollection(VLen, I);
-          SetLength(AExpanded, VLen);
+          SetLength(AState.Expanded, VLen);
         end;
 
-        AExpanded[I].Index := VNodeIndex;
-        AExpanded[I].Category := VNodeData.Category.MarkCategory;
-        AExpanded[I].UID := GetCategoryUniqueID(AExpanded[I].Category);
+        VInfo := @AState.Expanded[I];
 
-        if AExpanded[I].UID <> CEmptyUniqueID then begin
+        VInfo.Index := VNodeIndex;
+        VInfo.Category := VNodeData.Category.MarkCategory;
+        VInfo.UID := GetCategoryUniqueID(VInfo.Category);
+
+        if VInfo.UID <> CEmptyUniqueID then begin
           Inc(I);
         end;
       end;
     end;
 
     // Selected
-    if (ASelected.UID = CEmptyUniqueID) and FMarksTree.Selected[VNode] then begin
+    if (VSelected.UID = CEmptyUniqueID) and FMarksTree.Selected[VNode] then begin
       if VNodeData = nil then begin
         VNodeData := FCategoryTree.GetNodeData(VNode);
       end;
       if (VNodeData <> nil) and (VNodeData.Category <> nil) then begin
-        ASelected.Index := VNodeIndex;
-        ASelected.Category := VNodeData.Category.MarkCategory;
-        ASelected.UID := GetCategoryUniqueID(ASelected.Category);
+        VSelected.Index := VNodeIndex;
+        VSelected.Category := VNodeData.Category.MarkCategory;
+        VSelected.UID := GetCategoryUniqueID(VSelected.Category);
       end;
     end;
 
@@ -1041,10 +1075,10 @@ begin
     Inc(VNodeIndex);
   end;
 
-  SetLength(AExpanded, I);
+  SetLength(AState.Expanded, I);
 end;
 
-procedure TMarksExplorerView.RestoreCategoriesState(const AExpanded: TCategoryInfoArray; const ASelected: TCategoryInfo);
+procedure TMarksExplorerView.RestoreCategoriesTreeState(const AState: PCategoriesTreeState);
 var
   I: Integer;
   VNode: PVirtualNode;
@@ -1056,9 +1090,13 @@ var
   VSelectedFound: Boolean;
   VMatched: Boolean;
   VNodeUID: Cardinal;
+  VInfo: PCategoryInfo;
+  VSelected: PCategoryInfo;
 begin
-  VExpandedLen := Length(AExpanded);
-  VSelectedFound := (ASelected.UID = CEmptyUniqueID);
+  VSelected := @AState.Selected;
+
+  VExpandedLen := Length(AState.Expanded);
+  VSelectedFound := (VSelected.UID = CEmptyUniqueID);
 
   if (VExpandedLen = 0) and VSelectedFound then begin
     Exit;
@@ -1087,14 +1125,16 @@ begin
             Continue;
           end;
 
+          VInfo := @AState.Expanded[I];
+
           VMatched :=
-            (AExpanded[I].Index = VNodeIndex) and
-            (AExpanded[I].UID = VNodeUID);
+            (VInfo.Index = VNodeIndex) and
+            (VInfo.UID = VNodeUID);
 
           if not VMatched then begin
             VMatched :=
-              (AExpanded[I].Category <> nil) and
-               AExpanded[I].Category.IsSame(VNodeData.Category.MarkCategory);
+              (VInfo.Category <> nil) and
+               VInfo.Category.IsSame(VNodeData.Category.MarkCategory);
           end;
 
           if VMatched then begin
@@ -1113,13 +1153,13 @@ begin
         end;
 
         VSelectedFound :=
-          (ASelected.Index = VNodeIndex) and
-          (ASelected.UID = VNodeUID);
+          (VSelected.Index = VNodeIndex) and
+          (VSelected.UID = VNodeUID);
 
         if not VSelectedFound then begin
           VSelectedFound :=
-            (ASelected.Category <> nil) and
-             ASelected.Category.IsSame(VNodeData.Category.MarkCategory);
+            (VSelected.Category <> nil) and
+             VSelected.Category.IsSame(VNodeData.Category.MarkCategory);
         end;
 
         if VSelectedFound then begin
@@ -1138,7 +1178,7 @@ begin
   end;
 end;
 
-procedure TMarksExplorerView.GetMarksTreeState(var AState: TMarksTreeState);
+procedure TMarksExplorerView.GetMarksTreeState(const AState: PMarksTreeState);
 var
   I: Integer;
   VNode: PVirtualNode;
@@ -1162,7 +1202,7 @@ begin
   AState.TreeItemsCount := FMarksTree.TotalCount;
 end;
 
-procedure TMarksExplorerView.RestoreMarksTreeState(const AState: TMarksTreeState);
+procedure TMarksExplorerView.RestoreMarksTreeState(const AState: PMarksTreeState);
 var
   I: Integer;
   VNode: PVirtualNode;
@@ -1206,13 +1246,13 @@ begin
   end;
 end;
 
-function TMarksExplorerView.GetScrollInfo: TMarksExplorerViewScrollInfo;
+function TMarksExplorerView.GetScrollInfo: TScrollInfo;
 begin
   Result.MarksOffsetY := FMarksTree.OffsetY;
   Result.CategoriesOffsetY := FCategoryTree.OffsetY;
 end;
 
-procedure TMarksExplorerView.SetScrollInfo(const AValue: TMarksExplorerViewScrollInfo);
+procedure TMarksExplorerView.SetScrollInfo(const AValue: TScrollInfo);
 begin
   FMarksTree.OffsetY := AValue.MarksOffsetY;
   FCategoryTree.OffsetY := AValue.CategoriesOffsetY;
