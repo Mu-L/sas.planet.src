@@ -24,6 +24,7 @@ unit u_ListenerByEvent;
 interface
 
 uses
+  Classes,
   t_Listener,
   i_NotifierTime,
   i_Listener,
@@ -66,7 +67,7 @@ type
     procedure OnTimer;
   private
     { IListener }
-    procedure Notification(const AMsg: IInterface);
+    procedure Notification(const AMsg: IInterface); virtual;
   public
     constructor Create(
       const ATimerNoifier: INotifierTime;
@@ -74,6 +75,12 @@ type
       const AEvent: TNotifyListenerNoMmgEvent
     );
     destructor Destroy; override;
+  end;
+
+  TNotifyEventListenerGuiSync = class(TNotifyEventListenerSync)
+  private
+    { IListener }
+    procedure Notification(const AMsg: IInterface); override;
   end;
 
 implementation
@@ -99,7 +106,6 @@ end;
 
 procedure TNotifyEventListener.Notification(const AMsg: IInterface);
 begin
-  inherited;
   if not FDisconnectFlag.CheckFlag then begin
     FEvent(AMsg);
   end;
@@ -146,8 +152,18 @@ end;
 
 procedure TNotifyEventListenerSync.Notification(const AMsg: IInterface);
 begin
-  inherited;
   FNeedNotifyFlag.SetFlag;
+end;
+
+{ TNotifyEventListenerGuiSync }
+
+procedure TNotifyEventListenerGuiSync.Notification(const AMsg: IInterface);
+begin
+  if TThread.Current.ThreadID = MainThreadID then begin
+    FEvent;
+  end else begin
+    FNeedNotifyFlag.SetFlag;
+  end;
 end;
 
 { TNotifyNoMmgEventListener }
