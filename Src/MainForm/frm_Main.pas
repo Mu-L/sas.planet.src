@@ -2290,6 +2290,7 @@ begin
     FfrmMarksExplorer :=
       TfrmMarksExplorer.Create(
         False,
+        GState.GUISyncronizedTimerNotifier,
         GState.Config.LanguageManager,
         GState.VectorGeometryLonLatFactory,
         FViewPortState.View,

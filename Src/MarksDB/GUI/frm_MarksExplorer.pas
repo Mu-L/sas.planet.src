@@ -45,6 +45,7 @@ uses
   frm_MarkSystemConfigEdit,
   frm_MarksExplorerFilter,
   i_Listener,
+  i_NotifierTime,
   i_RegionProcess,
   i_LanguageManager,
   i_InterfaceListStatic,
@@ -264,6 +265,7 @@ type
   public
     constructor Create(
       const AUseAsIndepentWindow: Boolean;
+      const AGuiSyncronizedTimerNoifier: INotifierTime;
       const ALanguageManager: ILanguageManager;
       const AGeometryLonLatFactory: IGeometryLonLatFactory;
       const AViewPortState: ILocalCoordConverterChangeable;
@@ -286,6 +288,7 @@ implementation
 uses
   gnugettext,
   t_GeoTypes,
+  t_Listener,
   i_MarkDb,
   i_InterfaceListSimple,
   i_Category,
@@ -304,6 +307,7 @@ uses
 
 constructor TfrmMarksExplorer.Create(
   const AUseAsIndepentWindow: Boolean;
+  const AGuiSyncronizedTimerNoifier: INotifierTime;
   const ALanguageManager: ILanguageManager;
   const AGeometryLonLatFactory: IGeometryLonLatFactory;
   const AViewPortState: ILocalCoordConverterChangeable;
@@ -318,6 +322,12 @@ constructor TfrmMarksExplorer.Create(
   const AElevationProfilePresenter: IElevationProfilePresenter;
   const ARegionProcess: IRegionProcess
 );
+
+  function MakeListener(const AEvent: TNotifyListenerNoMmgEvent): IListener;
+  begin
+    Result := TNotifyEventListenerGuiSync.Create(AGuiSyncronizedTimerNoifier, 100, AEvent);
+  end;
+
 begin
   inherited Create(ALanguageManager);
 
@@ -335,13 +345,13 @@ begin
   FRegionProcess := ARegionProcess;
   FElevationProfilePresenter := AElevationProfilePresenter;
 
-  FMarkSystemConfigListener := TNotifyNoMmgEventListener.Create(Self.OnMarkSystemConfigChange);
-  FCategoryDBListener := TNotifyNoMmgEventListener.Create(Self.OnCategoryDbChanged);
-  FMarksDBListener := TNotifyNoMmgEventListener.Create(Self.OnMarksDbChanged);
-  FMarksShowConfigListener := TNotifyNoMmgEventListener.Create(Self.OnMarksShowConfigChanged);
-  FConfigListener := TNotifyNoMmgEventListener.Create(Self.OnConfigChange);
-  FMarksSystemStateListener := TNotifyNoMmgEventListener.Create(Self.OnMarkSystemStateChanged);
-  FMarksExplorerFilterListener := TNotifyNoMmgEventListener.Create(Self.OnMarksExplorerFilterChanged);
+  FMarkSystemConfigListener := MakeListener(Self.OnMarkSystemConfigChange);
+  FCategoryDBListener := MakeListener(Self.OnCategoryDbChanged);
+  FMarksDBListener := MakeListener(Self.OnMarksDbChanged);
+  FMarksShowConfigListener := MakeListener(Self.OnMarksShowConfigChanged);
+  FConfigListener := MakeListener(Self.OnConfigChange);
+  FMarksSystemStateListener := MakeListener(Self.OnMarkSystemStateChanged);
+  FMarksExplorerFilterListener := MakeListener(Self.OnMarksExplorerFilterChanged);
 
   FfrmMarkSystemConfigEdit :=
     TfrmMarkSystemConfigEdit.Create(
