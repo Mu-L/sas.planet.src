@@ -599,7 +599,6 @@ procedure TfrmMapTypeEdit.CreateSynEditTextHighlighters;
       Gutter.Visible := False;
       ReadOnly := True;
       ScrollBars := ssVertical;
-      FontSmoothing := fsmNone;
       WordWrap := True;
       DoubleBuffered := True;
     end;

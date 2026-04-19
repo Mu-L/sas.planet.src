@@ -1114,7 +1114,6 @@ end;
 
 procedure TfrmPascalScriptIDE.tbxtmGenerateGUIDClick(Sender: TObject);
 var
-  VText: string;
   VSynEdit: TSynEdit;
 begin
   if pgcMain.ActivePage = tsParams then begin
@@ -1126,15 +1125,7 @@ begin
     Exit;
   end;
 
-  VText := TGUID.NewGuid.ToString;
-
-  if VSynEdit.SelLength > 0 then begin
-    // replace selected text
-    VSynEdit.SelText := VText;
-  end else begin
-    // insert at caret position
-    VSynEdit.InsertBlock(VSynEdit.CaretXY, VSynEdit.CaretXY, PChar(VText), True);
-  end;
+  VSynEdit.SelText := TGUID.NewGuid.ToString;
 end;
 
 procedure TfrmPascalScriptIDE.tbxtmToArchiveClick(Sender: TObject);
@@ -1191,7 +1182,6 @@ procedure TfrmPascalScriptIDE.CreateSynEditTextHighlighters;
       Gutter.GradientStartColor := clBtnFace;
       ReadOnly := False;
       ScrollBars := ssBoth;
-      FontSmoothing := fsmNone;
       WordWrap := True;
       DoubleBuffered := True;
       Tag := ATag;

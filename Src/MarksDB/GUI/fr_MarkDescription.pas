@@ -112,7 +112,6 @@ begin
     ScrollBars := ssVertical;
     OnKeyDown := EditCommentKeyDown;
     Gutter.Visible := False;
-    FontSmoothing := fsmNone;
     WordWrap := True;
     DoubleBuffered := True;
   end;
