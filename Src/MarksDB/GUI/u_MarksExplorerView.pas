@@ -207,9 +207,11 @@ begin
   FCategoryTree.Parent := ACategoriesPanel;
   FCategoryTree.Align := alClient;
   FCategoryTree.NodeDataSize := SizeOf(TCategoryNodeData);
-  FCategoryTree.TreeOptions.MiscOptions := FCategoryTree.TreeOptions.MiscOptions + [toCheckSupport];
-  FCategoryTree.TreeOptions.SelectionOptions := FCategoryTree.TreeOptions.SelectionOptions + [toFullRowSelect];
-  FCategoryTree.TreeOptions.PaintOptions := FCategoryTree.TreeOptions.PaintOptions + [toShowRoot, toShowTreeLines];
+  with FCategoryTree.TreeOptions do begin
+    MiscOptions := MiscOptions + [toCheckSupport];
+    SelectionOptions := SelectionOptions + [toFullRowSelect];
+    PaintOptions := PaintOptions + [toShowRoot, toShowTreeLines, toUseExplorerTheme];
+  end;
   FCategoryTree.DragMode := dmAutomatic;
   FCategoryTree.DragType := dtVCL;
   FCategoryTree.Header.Options := FCategoryTree.Header.Options - [hoVisible];
@@ -231,9 +233,11 @@ begin
   FMarksTree.Parent := AMarksPanel;
   FMarksTree.Align := alClient;
   FMarksTree.NodeDataSize := 0;
-  FMarksTree.TreeOptions.MiscOptions := FMarksTree.TreeOptions.MiscOptions + [toCheckSupport];
-  FMarksTree.TreeOptions.SelectionOptions := FMarksTree.TreeOptions.SelectionOptions + [toFullRowSelect, toMultiSelect];
-  FMarksTree.TreeOptions.PaintOptions := FMarksTree.TreeOptions.PaintOptions - [toShowRoot, toShowTreeLines];
+  with FMarksTree.TreeOptions do begin
+    MiscOptions := MiscOptions + [toCheckSupport];
+    SelectionOptions := SelectionOptions + [toFullRowSelect, toMultiSelect];
+    PaintOptions := PaintOptions - [toShowRoot, toShowTreeLines];
+  end;
   FMarksTree.DragMode := dmAutomatic;
   FMarksTree.DragType := dtVCL;
   FMarksTree.Header.Options := FMarksTree.Header.Options - [hoVisible];
