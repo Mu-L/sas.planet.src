@@ -186,6 +186,7 @@ uses
   i_MarkCategoryFactory,
   u_MarkCategoryList,
   u_InterfaceListSimple,
+  u_Dialogs,
   u_SortFunc;
 
 constructor TMarksExplorerView.Create(
@@ -934,11 +935,28 @@ begin
   I := 0;
   VNode := FMarksTree.GetFirstSelected;
   while VNode <> nil do begin
-    Result[I] := GetNodeMarkId(VNode);
-    if Assigned(Result[I]) then begin
-      Inc(I);
+    if I < VCount then begin
+      Result[I] := GetNodeMarkId(VNode);
+      if Assigned(Result[I]) then begin
+        Inc(I);
+      end;
+      VNode := FMarksTree.GetNextSelected(VNode);
+    end else begin
+      // This appears to be a VirtualTreeView bug
+      I := 0;
+      VNode := FMarksTree.GetFirstSelected;
+      while VNode <> nil do begin
+        Inc(I);
+        VNode := FMarksTree.GetNextSelected(VNode);
+      end;
+      ShowErrorMessage(Format(
+        'Virtual Treeview internal error!' + #13#10 + #13#10 +
+        'MarksTree.SelectedCount (%d) is less than the number of selected nodes (%d)', [VCount, I+1]
+      ));
+      FMarksTree.ClearSelection;
+      Result := nil;
+      Exit;
     end;
-    VNode := FMarksTree.GetNextSelected(VNode);
   end;
 
   SetLength(Result, I);
@@ -1185,6 +1203,7 @@ end;
 procedure TMarksExplorerView.GetMarksTreeState(const AState: PMarksTreeState);
 var
   I: Integer;
+  VLen: Integer;
   VNode: PVirtualNode;
 begin
   VNode := FMarksTree.FocusedNode;
@@ -1195,11 +1214,14 @@ begin
   end;
 
   I := 0;
-  SetLength(AState.SelectedIndex, FMarksTree.SelectedCount);
+  VLen := FMarksTree.SelectedCount;
+  SetLength(AState.SelectedIndex, VLen);
 
   for VNode in FMarksTree.SelectedNodes do begin
-    AState.SelectedIndex[I] := VNode.Index;
-    Inc(I);
+    if I < VLen then begin
+      AState.SelectedIndex[I] := VNode.Index;
+      Inc(I);
+    end;
   end;
 
   AState.ScrollOffsetY := FMarksTree.OffsetY;
