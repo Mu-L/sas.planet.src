@@ -559,6 +559,13 @@ begin
     Exit;
   end;
 
+  if not FileExists(edtMapCompilerLicensePath.Text) then begin
+    ShowErrorMessage(_('MPC compiler license path is not set or incorrect!'));
+    pgcMain.ActivePage := tsSettings;
+    edtMapCompilerLicensePath.SetFocus;
+    Exit;
+  end;
+
   if not FileExists(edtGMTPath.Text) then begin
     ShowErrorMessage(_('GMT tool path is not set or incorrect!'));
     pgcMain.ActivePage := tsSettings;
