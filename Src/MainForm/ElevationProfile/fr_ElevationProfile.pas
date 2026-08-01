@@ -70,8 +70,11 @@ type
     Gain: Double;
     Loss: Double;
 
-    GainPoints: Integer;
-    LossPoints: Integer;
+    GainHeight: Double;
+    LossHeight: Double;
+
+    GainDist: Double;
+    LossDist: Double;
   end;
 
   TProfileInfoRec = record
@@ -267,6 +270,7 @@ const
   CFilterElevWindow = 3;
   CFilterSpeedWindow = 5;
   CFilterElevThreshold = 1.5; // meters
+  CSlopeCalcDistThreshold = 5.0; // meters
 
 {$R *.dfm}
 
@@ -668,11 +672,11 @@ begin
     FInfo.Elev.Avg := FInfo.Elev.Avg / FInfo.PointsCount;
     FInfo.Speed.Avg := FInfo.Speed.Avg / FInfo.PointsCount;
 
-    if FInfo.AvgSlope.GainPoints > 0 then begin
-      FInfo.AvgSlope.Gain := FInfo.AvgSlope.Gain / FInfo.AvgSlope.GainPoints;
+    if FInfo.AvgSlope.GainDist > 0 then begin
+      FInfo.AvgSlope.Gain := (FInfo.AvgSlope.GainHeight / FInfo.AvgSlope.GainDist) * 100;
     end;
-    if FInfo.AvgSlope.LossPoints > 0 then begin
-      FInfo.AvgSlope.Loss := FInfo.AvgSlope.Loss / FInfo.AvgSlope.LossPoints;
+    if FInfo.AvgSlope.LossDist > 0 then begin
+      FInfo.AvgSlope.Loss := (FInfo.AvgSlope.LossHeight / FInfo.AvgSlope.LossDist) * 100;
     end;
   end else begin
     ResetInfo(FInfo);
@@ -909,49 +913,53 @@ procedure TfrElevationProfile.FillSeriesWithLineData(
 
   procedure CalcSlope(
     const AValues: TChartValueList;
-    const AStartIndex: Integer
+    const AStartIndex: Integer;
+    const ADistThreshold: Double
   );
   var
     I: Integer;
-    VCurr: Double;
-    VPrev: Double;
+    VPrevIndex: Integer;
+    VHeightDiff: Double;
     VDist: Double;
     VSlope: Double;
   begin
     if (AValues.Count - AStartIndex) < 2 then begin
       Exit;
     end;
-    VPrev := AValues[AStartIndex];
-    for I := AStartIndex + 1 to AValues.Count - 1 do begin
-      VCurr := AValues[I];
-      VDist := FDist[I] - FDist[I-1];
-      if VDist > 0 then begin
-        VSlope := 100 * (VCurr - VPrev) / VDist;
 
-        if VCurr > VPrev then begin
-          // Max Gain
-          if VSlope > FInfo.MaxSlope.Gain then begin
-            FInfo.MaxSlope.Gain := VSlope;
-          end;
-          // Avg Gain
-          FInfo.AvgSlope.Gain := FInfo.AvgSlope.Gain + VSlope;
-          Inc(FInfo.AvgSlope.GainPoints);
-        end else
-        if VCurr < VPrev then begin
-          // Max Loss
-          if VSlope < FInfo.MaxSlope.Loss then begin
-            FInfo.MaxSlope.Loss := VSlope;
-          end;
-          // Avg Loss
-          FInfo.AvgSlope.Loss := FInfo.AvgSlope.Loss + VSlope;
-          Inc(FInfo.AvgSlope.LossPoints);
-        end else begin
-          // Zero slope
-          Inc(FInfo.AvgSlope.GainPoints);
-          Inc(FInfo.AvgSlope.LossPoints);
-        end;
+    VPrevIndex := AStartIndex;
+
+    for I := AStartIndex + 1 to AValues.Count - 1 do begin
+      VDist := FDist[I] - FDist[VPrevIndex];
+
+      if VDist < ADistThreshold then begin
+        Continue;
       end;
-      VPrev := VCurr;
+
+      VHeightDiff := AValues[I] - AValues[VPrevIndex];
+
+      VSlope := (VHeightDiff / VDist) * 100;
+
+      if VHeightDiff > 0 then begin
+        // Gain
+        if VSlope > FInfo.MaxSlope.Gain then begin
+          FInfo.MaxSlope.Gain := VSlope;
+        end;
+        FInfo.AvgSlope.GainDist := FInfo.AvgSlope.GainDist + VDist;
+        FInfo.AvgSlope.GainHeight := FInfo.AvgSlope.GainHeight + VHeightDiff;
+      end else
+      if VHeightDiff < 0 then begin
+        // Loss
+        if VSlope < FInfo.MaxSlope.Loss then begin
+          FInfo.MaxSlope.Loss := VSlope;
+        end;
+        FInfo.AvgSlope.LossDist := FInfo.AvgSlope.LossDist + VDist;
+        FInfo.AvgSlope.LossHeight := FInfo.AvgSlope.LossHeight + VHeightDiff;
+      end else begin
+        // Zero slope: nothing to do
+      end;
+
+      VPrevIndex := I;
     end;
   end;
 
@@ -1047,7 +1055,7 @@ begin
   CalcElevAscentDescent(FElevationSeries.YValues, VStartIndex, CFilterElevThreshold);
 
   // Calculate slope/gradient metrics
-  CalcSlope(FElevationSeries.YValues, VStartIndex);
+  CalcSlope(FElevationSeries.YValues, VStartIndex, CSlopeCalcDistThreshold);
 end;
 
 procedure TfrElevationProfile.ScaleElevToDistAsOneToOne;
