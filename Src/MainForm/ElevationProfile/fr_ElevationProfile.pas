@@ -720,16 +720,21 @@ procedure TfrElevationProfile.FillSeriesWithLineData(
     VHalf: Integer;
     VLeft, VRight, VCurrentWindow: Integer;
     VTmp: array of Double;
-    VWinBuf: array[0..14] of Double;
+    VWinBuf: array of Double;
     VSwap: Double;
   begin
+    if not Odd(AWindow) then begin
+      raise Exception.Create('Median filter: Window size must be an odd number!');
+    end;
+
     VCount := AValues.Count - AStartIndex;
 
-    if (VCount < 2) or (AWindow < 3) or (AWindow > Length(VWinBuf)) then begin
+    if (VCount < 2) or (AWindow < 3) then begin
       Exit;
     end;
 
     SetLength(VTmp, VCount);
+    SetLength(VWinBuf, AWindow);
     VHalf := AWindow div 2;
 
     for I := 0 to VCount - 1 do begin
@@ -787,6 +792,10 @@ procedure TfrElevationProfile.FillSeriesWithLineData(
     VInvWindow: Double;
     VLeft, VRight, VCurrentWindow: Integer;
   begin
+    if not Odd(AWindow) then begin
+      raise Exception.Create('SMA filter: Window size must be an odd number!');
+    end;
+
     VCount := AValues.Count - AStartIndex;
 
     if (VCount < AWindow) or (AWindow < 2) then begin
@@ -959,6 +968,7 @@ var
   VPrevTimeValue: TDateTime;
   VIsPrevOk: Boolean;
   VStartIndex: Integer;
+  VElevWindow, VSpeedWindow: Integer;
 begin
   VIsPrevOk := False;
 
@@ -1015,13 +1025,18 @@ begin
 
   // Apply filtering
   if FConfigStatic.UseDataFiltering then begin
+
+    // ToDo: read window sizes from config
+    VElevWindow := CFilterElevWindow;
+    VSpeedWindow := CFilterSpeedWindow;
+
     // Step 1: Median filter (removes hard spikes)
-    MedianFilter(FElevationSeries.YValues, VStartIndex, CFilterElevWindow);
-    MedianFilter(FSpeedSeries.YValues, VStartIndex, CFilterSpeedWindow);
+    MedianFilter(FElevationSeries.YValues, VStartIndex, VElevWindow);
+    MedianFilter(FSpeedSeries.YValues, VStartIndex, VSpeedWindow);
 
     // Step 2: SMA filter (removes minor noise)
-    Filter(FElevationSeries.YValues, VStartIndex, CFilterElevWindow);
-    Filter(FSpeedSeries.YValues, VStartIndex, CFilterSpeedWindow);
+    Filter(FElevationSeries.YValues, VStartIndex, VElevWindow);
+    Filter(FSpeedSeries.YValues, VStartIndex, VSpeedWindow);
   end;
 
   // Calculate statistics (based on filtered data if enabled)
